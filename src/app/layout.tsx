@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   keywords: ["engineering notes", "tech blogs", "handwritten notes", "developer workspace", "Flutter android apps."],
 
   verification: {
-    google: "google6a62697816db92fa", 
+    google: "Ggsz0-NigmgC8IFfaluvDJFyXY-koPU8RxIGj8tZ3ZU", 
   },
 
 
