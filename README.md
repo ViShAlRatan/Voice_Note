@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -34,3 +35,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+=======
+# Voice_Note
+Welcome to my digital workspace! Yeh platform sirf ek website nahi hai, yeh ek emotion hai. Main yahan apne Flutter Apps banaye hue high-performance , deeply researched  Advance Study Notes , aur detailed Tech Blogs regularly upload karta hu. Aaiye sath judiye, sath milkar kuch new sikhte hai, aur milkar nayi journey ki shuruat krte hai !
+>>>>>>> 70f244bd62529112df7ec6294ed756cb7aec1af1
