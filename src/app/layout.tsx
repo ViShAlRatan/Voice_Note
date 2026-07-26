@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/app/globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 //for inspect on off
 import DisableInspect from './DisableInspect';
@@ -18,9 +19,24 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+
 export const metadata: Metadata = {
-  title: "Voice Note | Let's Learn ❤️", 
-  description: "Exclusive portal for Apps, Notes, and Engineering Blogs.", 
+  title: "Voice Note | Premium Knowledge Workspace ",
+  description: "Access premium digital notes, handwritten PDFs, and tech resources. The ultimate workspace for students and developers.",
+  keywords: ["engineering notes", "tech blogs", "handwritten notes", "developer workspace", "Flutter android apps."],
+
+  verification: {
+    google: "google-site-verification: google6a62697816db92fa.html", 
+  },
+
+
+  openGraph: {
+    title: "Voice Note - Knowledge Workspace",
+    description: "Your ultimate study companion and tech hub.",
+    url: "https://voice-note-fawn.vercel.app/", 
+    siteName: "Voice Note",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
