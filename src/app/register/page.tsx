@@ -72,14 +72,11 @@ export default function RegisterPage() {
         }).eq('id', userId);
       }
 
-      // 🔥 4. SEND PREMIUM WELCOME EMAIL 🔥
-      await sendWelcomeEmail(email, name);
-
       toast.dismiss("register-toast");
 
       toast("Account created successfully! 🎉", {
         icon: "🥳",
-        description: "Check your email for a welcome message!", // Updated message
+        description: "Please Login to Continue", // Updated message
         duration: 4000, 
         style: {
           background: "#18181b",
@@ -90,7 +87,7 @@ export default function RegisterPage() {
       
       setTimeout(() => {
         router.push("/login");
-      }, 2000);
+      }, 1500);
     });
   }
 

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { ArrowLeft, Clock, List, ChevronRight } from "lucide-react";
+import { ArrowLeft, Clock, ChevronRight, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -11,7 +11,7 @@ export default async function ReadingPage({ params }: { params: Promise<{ subjec
   const { data: topic } = await supabase.from("digital_topics").select("*, digital_subjects(name)").eq("id", id).single();
   if (!topic) return notFound(); 
 
-  // 2. Usi subject ke saare baaki topics fetch karna
+  // 2. Usi subject ke saare baaki topics fetch karna (Aage chal kar isko Unit-wise filter karenge)
   const { data: allTopics } = await supabase
     .from("digital_topics")
     .select("id, title, read_time")
@@ -36,48 +36,49 @@ export default async function ReadingPage({ params }: { params: Promise<{ subjec
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 flex flex-col lg:flex-row gap-10 lg:gap-12 relative">
         
         {/* ==========================================
-            SIDEBAR: OTHER TOPICS IN THIS SUBJECT
-            (Mobile: Horizontal Swipe Slider, Desktop: Vertical List)
+            SIDEBAR: UGC NET SYLLABUS & UNITS
         ========================================== */}
         <div className="w-full lg:w-80 shrink-0 mt-2 lg:mt-0">
           <div className="lg:sticky lg:top-24 lg:bg-zinc-950/60 lg:backdrop-blur-md lg:border border-white/10 rounded-3xl lg:p-5 lg:shadow-2xl">
-            <div className="flex items-center gap-3 mb-4 lg:mb-6 lg:pb-4 lg:border-b border-white/10">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                <List className="w-4 h-4" />
-              </div>
-              <h3 className="font-bold text-lg text-white">Course Index</h3>
+            
+            {/* Main Heading */}
+            <div className="flex flex-col gap-1 mb-6 pb-4 border-b border-white/10">
+              <span className="text-emerald-500 font-bold text-xs tracking-widest uppercase flex items-center gap-2">
+                <BookOpen className="w-4 h-4" /> Syllabus
+              </span>
+              <h3 className="font-extrabold text-2xl text-white">UGC NET Computer Science</h3>
             </div>
             
-            {/* 🔥 MOBILE HORIZONTAL SLIDER & DESKTOP VERTICAL LIST 🔥 */}
-            <div className="flex gap-3 overflow-x-auto lg:flex-col lg:overflow-y-auto lg:max-h-[60vh] scrollbar-hide pb-4 lg:pb-0 snap-x snap-mandatory lg:snap-none pr-4 lg:pr-2">
-              {allTopics?.map((t: any, index: number) => {
-                const isActive = t.id === id;
-                return (
-                  <Link 
-                    href={`/digital-notes/${subject}/${t.id}`} 
-                    key={t.id}
-                    className={`shrink-0 w-64 lg:w-full flex items-start gap-3 p-3.5 rounded-2xl transition-all snap-start ${
-                      isActive 
-                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-md" 
-                      : "bg-zinc-950/80 lg:bg-transparent border border-white/10 lg:border-transparent text-zinc-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <span className={`text-xs font-mono mt-0.5 ${isActive ? 'text-emerald-500' : 'text-zinc-600'}`}>
-                      {(index + 1).toString().padStart(2, '0')}
-                    </span>
-                    <div className="flex-1">
-                      <p className={`text-sm font-bold leading-snug mb-1.5 ${isActive ? 'text-emerald-400' : 'text-zinc-300'}`}>
-                        {t.title}
-                      </p>
-                      <p className="text-[10px] flex items-center gap-1 opacity-70">
-                        <Clock className="w-3 h-3" /> {t.read_time}
-                      </p>
-                    </div>
-                    {isActive && <ChevronRight className="w-4 h-4 mt-1 opacity-50" />}
-                  </Link>
-                );
-              })}
-            </div>
+            {/* 🔥 PAPER 1 BUTTON & 10 UNITS 🔥 */}
+            <details className="group mb-3 border border-white/10 rounded-2xl bg-zinc-900/40 open:bg-zinc-900/80 transition-all duration-300">
+              <summary className="flex items-center justify-between p-4 cursor-pointer list-none font-bold text-zinc-200 select-none">
+                Paper 1 (General)
+                <ChevronRight className="w-5 h-5 transition-transform duration-300 group-open:rotate-90 text-emerald-500" />
+              </summary>
+              <div className="p-4 pt-0 border-t border-white/5 mt-2 flex flex-col gap-2 max-h-60 overflow-y-auto scrollbar-hide">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((unit) => (
+                  <div key={unit} className="p-2.5 bg-black/50 rounded-xl text-sm font-medium text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer border border-transparent hover:border-emerald-500/30 transition-all">
+                    Unit {unit}: Teaching & Research
+                  </div>
+                ))}
+              </div>
+            </details>
+
+            {/* 🔥 PAPER 2 BUTTON & 10 UNITS 🔥 */}
+            <details className="group border border-white/10 rounded-2xl bg-zinc-900/40 open:bg-zinc-900/80 transition-all duration-300">
+              <summary className="flex items-center justify-between p-4 cursor-pointer list-none font-bold text-zinc-200 select-none">
+                Paper 2 (CS)
+                <ChevronRight className="w-5 h-5 transition-transform duration-300 group-open:rotate-90 text-emerald-500" />
+              </summary>
+              <div className="p-4 pt-0 border-t border-white/5 mt-2 flex flex-col gap-2 max-h-60 overflow-y-auto scrollbar-hide">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((unit) => (
+                  <div key={unit} className="p-2.5 bg-black/50 rounded-xl text-sm font-medium text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer border border-transparent hover:border-emerald-500/30 transition-all">
+                    Unit {unit}: CS Subject Name
+                  </div>
+                ))}
+              </div>
+            </details>
+
           </div>
         </div>
 
@@ -95,7 +96,7 @@ export default async function ReadingPage({ params }: { params: Promise<{ subjec
             </div>
           </div>
 
-          {/* Article Body (HTML/Markdown render) */}
+          {/* Article Body */}
           <div className="prose prose-invert prose-emerald max-w-none text-zinc-300 md:text-lg leading-loose"
                dangerouslySetInnerHTML={{ __html: topic.content.replace(/\n/g, '<br/>') }} 
           />

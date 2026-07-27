@@ -542,7 +542,7 @@ export default function PublishTab() {
         )}
 
         {/* --- FORM B: DIGITAL NOTES (HTML/MARKDOWN) --- */}
-        {noteMode === 'digital' && (
+       {noteMode === 'digital' && (
           <div className="space-y-4 animate-in fade-in duration-300">
             {/* ADD NEW SUBJECT MODAL */}
             {isSubjectModalOpen && (
@@ -564,8 +564,8 @@ export default function PublishTab() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={() => setIsSubjectModalOpen(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white">Cancel</Button>
-                    <Button onClick={handleAddSubject} disabled={isSubjectAdding} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
+                    <Button type="button" onClick={() => setIsSubjectModalOpen(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white">Cancel</Button>
+                    <Button type="button" onClick={handleAddSubject} disabled={isSubjectAdding} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
                       {isSubjectAdding ? "Adding..." : "Add"}
                     </Button>
                   </div>
@@ -596,6 +596,34 @@ export default function PublishTab() {
                 </div>
               </div>
               
+              {/* 🔥 NEW PAPER TYPE & UNIT SELECTORS 🔥 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">UGC NET Paper</Label>
+                  <select 
+                    name="paper_type" required disabled={isDigitalNotePending} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="">-- Select Paper --</option>
+                    <option value="paper1">Paper 1 (General)</option>
+                    <option value="paper2">Paper 2 (Computer Science)</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Select Unit</Label>
+                  <select 
+                    name="unit_number" required disabled={isDigitalNotePending} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="">-- Select Unit --</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(unit => (
+                      <option key={unit} value={`unit${unit}`}>Unit {unit}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {/* 🔥 END NEW SECTION 🔥 */}
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2 md:col-span-3">
                   <Label className="text-zinc-300">Short Description</Label>
@@ -612,7 +640,7 @@ export default function PublishTab() {
                 <textarea name="content" required disabled={isDigitalNotePending} placeholder="Write your full structured topic here..." className="flex min-h-[220px] w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 leading-relaxed resize-y" />
               </div>
 
-              <Button type="submit" disabled={isDigitalNotePending} className="w-full bg-blue-50 text-black hover:bg-gray-300  h-11 rounded-xl mt-4 shadow-lg shadow-emerald-500/20">
+              <Button type="submit" disabled={isDigitalNotePending} className="w-full bg-blue-50 text-black hover:bg-gray-300 h-11 rounded-xl mt-4 shadow-lg shadow-emerald-500/20">
                 {isDigitalNotePending ? <><Loader2 className="animate-spin w-4 h-4 mr-2"/> Saving Topic...</> : "Publish Digital Topic"}
               </Button>
             </form>
