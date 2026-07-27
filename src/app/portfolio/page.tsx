@@ -484,7 +484,7 @@ acquire knowledge every single day."I believe that learning never stops.
 
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 1, delay: 0.2 }} className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
           <p>© {new Date().getFullYear()} <span className="font-bold text-blue-200 underline">My Portfolio</span> Platform. All rights reserved.</p>
-          <p className="flex items-center gap-1">Developed by <span className="font-bold text-blue-200 underline">VISHAL</span> With ❤️</p>
+          <p className="flex items-center gap-1">Developed by <span className="font-bold text-blue-200 underline">VISHAL</span> With AI ❤️</p>
           <p className="flex items-center gap-1">Built with <span className="font-bold text-blue-200 underline">Next.js, Tailwind v4,</span> and <span className="font-bold text-blue-200 underline">Supabase.</span></p>
         </motion.div>
       </footer>

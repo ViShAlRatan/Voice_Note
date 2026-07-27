@@ -6,18 +6,46 @@ import { ArrowLeft, BookOpen, ExternalLink, Sparkles, MonitorSmartphone, PenTool
 import Link from "next/link";
 import DigitalSearch from "@/components/ui/DigitalSearch";
 
-export default async function NotesPage({ searchParams }: { searchParams: Promise<{ view?: string, subject?: string, paper?: string }> }) {
+// 🔥 STATIC UNITS FROM PDF SYLLABUS 🔥
+const PAPER1_UNITS = [
+  { id: 'unit1', name: 'Teaching Aptitude' },
+  { id: 'unit2', name: 'Research Aptitude' },
+  { id: 'unit3', name: 'Comprehension' },
+  { id: 'unit4', name: 'Communication' },
+  { id: 'unit5', name: 'Mathematical Reasoning and Aptitude' },
+  { id: 'unit6', name: 'Logical Reasoning' },
+  { id: 'unit7', name: 'Data Interpretation' },
+  { id: 'unit8', name: 'Information and Communication Technology (ICT)' },
+  { id: 'unit9', name: 'People, Development and Environment' },
+  { id: 'unit10', name: 'Higher Education System' }
+];
+
+const PAPER2_UNITS = [
+  { id: 'unit1', name: 'Discrete Structures and Optimization' },
+  { id: 'unit2', name: 'Computer System Architecture' },
+  { id: 'unit3', name: 'Programming Languages and Computer Graphics' },
+  { id: 'unit4', name: 'Database Management Systems' },
+  { id: 'unit5', name: 'System Software and Operating System' },
+  { id: 'unit6', name: 'Software Engineering' },
+  { id: 'unit7', name: 'Data Structures and Algorithms' },
+  { id: 'unit8', name: 'Theory of Computation and Compilers' },
+  { id: 'unit9', name: 'Data Communication and Computer Networks' },
+  { id: 'unit10', name: 'Artificial Intelligence (AI)' }
+];
+
+export default async function NotesPage({ searchParams }: { searchParams: Promise<{ view?: string, unit?: string, paper?: string }> }) {
   const supabase = await createClient();
   const params = await searchParams;
   
   const activeView = params.view || "digital"; 
-  const activePaper = params.paper || "paper1"; // 🔥 NAYA: Paper select karne ke liye default state
+  const activePaper = params.paper || "paper1"; 
+  const activeUnit = params.unit || "unit1"; // Default to Unit 1
 
   // 1. Authentication Check (Login check)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <LockedScreen title="Knowledge Base" />;
 
-  //  2. PERMISSION CHECK (Database se profile check karna) 
+  // 2. PERMISSION CHECK (Database se profile check karna) 
   const { data: profile } = await supabase
     .from("profiles")
     .select("can_view_notes") 
@@ -33,24 +61,19 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  // 2. Fetch Data from Real Database
+  // 3. Fetch Data from Real Database
   const { data: handwrittenNotes } = await supabase.from("notes").select("*").order("created_at", { ascending: false });
-  const { data: digitalSubjects } = await supabase.from("digital_subjects").select("*").order("created_at", { ascending: true });
   
   // Search bar aur logic ke liye SAARE topics ek sath fetch kiye
   const { data: allDigitalTopics } = await supabase.from("digital_topics").select("*, digital_subjects(name)");
 
-  // 🔥 SMART LOGIC: Sirf wahi Subjects side mein dikhayein jinme Active Paper ke topics dale gaye hain
-  const subjectsForActivePaper = digitalSubjects?.filter(sub => {
-    return allDigitalTopics?.some(topic => topic.subject_id === sub.id && topic.paper_type === activePaper);
-  }) || [];
-
-  // Dynamic Active Subject Handle karna
-  const activeSubject = params.subject || (subjectsForActivePaper.length > 0 ? subjectsForActivePaper[0].id : null);
+  // 🔥 Determine which list of units to display
+  const activeUnitsList = activePaper === 'paper1' ? PAPER1_UNITS : PAPER2_UNITS;
+  const activeUnitDetails = activeUnitsList.find(u => u.id === activeUnit);
   
-  // Topics ko filter karna (Subject aur Paper dono match hone chahiye)
+  // Topics ko filter karna (Paper aur Unit Number dono match hone chahiye)
   const currentTopics = allDigitalTopics?.filter(topic => 
-    topic.subject_id === activeSubject && topic.paper_type === activePaper
+    topic.paper_type === activePaper && topic.unit_number === activeUnit
   ) || [];
 
   return (
@@ -84,17 +107,17 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
           <BookOpen className="w-4 h-4" /> Question Bank
         </Link>
         <Link 
-  href="/performance" 
-  className="flex items-center gap-4 p-5 rounded-2xl bg-zinc-950/60 border border-white/10 hover:border-emerald-500/50 hover:bg-zinc-900/50 transition-all cursor-pointer group shadow-lg backdrop-blur-md"
->
-  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-    📈
-  </div>
-  <div>
-    <h4 className="font-bold text-sm text-zinc-200">My Performance</h4>
-    <p className="text-[11px] text-zinc-500">Track your test scores & history</p>
-  </div>
-</Link>
+          href="/performance" 
+          className="flex items-center gap-4 p-5 rounded-2xl bg-zinc-950/60 border border-white/10 hover:border-emerald-500/50 hover:bg-zinc-900/50 transition-all cursor-pointer group shadow-lg backdrop-blur-md"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+            📈
+          </div>
+          <div>
+            <h4 className="font-bold text-sm text-zinc-200">My Performance</h4>
+            <p className="text-[11px] text-zinc-500">Track your test scores & history</p>
+          </div>
+        </Link>
       </div>
 
       {/* ==========================================
@@ -127,16 +150,16 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
             </div>
           </div>
 
-          {/* 🔥 NAYA: PAPER 1 & PAPER 2 TOGGLE (SEARCH KE NICHE) 🔥 */}
+          {/* 🔥 PAPER 1 & PAPER 2 TOGGLE 🔥 */}
           <div className="flex bg-zinc-900/80 border border-white/10 rounded-xl p-1 mb-10 w-full md:w-max shadow-xl">
             <Link 
-              href="?view=digital&paper=paper1" scroll={false} 
+              href="?view=digital&paper=paper1&unit=unit1" scroll={false} 
               className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-sm rounded-lg font-bold transition-all ${activePaper === 'paper1' ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
             >
               <Layers className="w-4 h-4" /> Paper 1 (General)
             </Link>
             <Link 
-              href="?view=digital&paper=paper2" scroll={false} 
+              href="?view=digital&paper=paper2&unit=unit1" scroll={false} 
               className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-sm rounded-lg font-bold transition-all ${activePaper === 'paper2' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
             >
               <Layers className="w-4 h-4" /> Paper 2 (CS)
@@ -144,43 +167,35 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
           </div>
 
           <div className="flex flex-col md:flex-row gap-8">
-            {/* RESPONSIVE HORIZONTAL SCROLL FOR MOBILE, VERTICAL FOR PC */}
+            
+            {/* 🔥 SYLLABUS UNITS SIDEBAR 🔥 */}
             <div className="w-full md:w-64 shrink-0">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 px-1">Subjects</h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 px-1">Syllabus Units</h3>
               <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide">
                 
-                {/* 🔥 Ab map digitalSubjects par nahi, subjectsForActivePaper par chalega 🔥 */}
-                {subjectsForActivePaper?.map((sub) => (
-                  <Link key={sub.id} href={`?view=digital&paper=${activePaper}&subject=${sub.id}`} scroll={false}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all border shrink-0 md:shrink border-transparent whitespace-nowrap ${activeSubject === sub.id ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-lg" : "bg-zinc-950/50 text-zinc-400 border-white/5"}`}
+                {activeUnitsList.map((unit) => (
+                  <Link key={unit.id} href={`?view=digital&paper=${activePaper}&unit=${unit.id}`} scroll={false}
+                    className={`flex flex-col items-start gap-1 px-4 py-3 rounded-2xl transition-all border shrink-0 md:shrink whitespace-nowrap md:whitespace-normal text-left ${activeUnit === unit.id ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-lg" : "bg-zinc-950/50 text-zinc-400 border-white/5 hover:bg-zinc-900"}`}
                   >
-                    <span className="text-lg">{sub.icon}</span>
-                    <span className="font-semibold text-sm">{sub.name}</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider opacity-70">{unit.id.replace('unit', 'Unit ')}</span>
+                    <span className="font-semibold text-sm leading-tight">{unit.name}</span>
                   </Link>
                 ))}
 
-                {/* Empty State for Sidebar */}
-                {(!subjectsForActivePaper || subjectsForActivePaper.length === 0) && (
-                  <p className="text-xs text-zinc-600 px-2 py-4 border border-dashed border-white/10 rounded-xl text-center">
-                    No subjects added for {activePaper === 'paper1' ? 'Paper 1' : 'Paper 2'} yet.
-                  </p>
-                )}
               </div>
             </div>
 
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-6">
-                <h2 className="text-2xl font-bold">{subjectsForActivePaper?.find(s => s.id === activeSubject)?.name || "Select Subject"}</h2>
+                <h2 className="text-2xl font-bold">{activeUnitDetails?.name || "Select Unit"}</h2>
                 <span className="bg-zinc-800 text-zinc-300 text-xs px-2.5 py-1 rounded-full font-mono">{currentTopics?.length || 0} Topics</span>
               </div>
 
               {currentTopics && currentTopics.length > 0 ? (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   {currentTopics.map((topic) => (
-                    <Link href={`/digital-notes/${activeSubject}/${topic.id}`} key={topic.id} className="group bg-zinc-950/60 backdrop-blur-md border border-white/10 hover:border-emerald-500/40 p-5 rounded-3xl transition-all hover:shadow-2xl hover:shadow-emerald-500/5 flex flex-col justify-between">
+                    <Link href={`/digital-notes/${activeUnit}/${topic.id}`} key={topic.id} className="group bg-zinc-950/60 backdrop-blur-md border border-white/10 hover:border-emerald-500/40 p-5 rounded-3xl transition-all hover:shadow-2xl hover:shadow-emerald-500/5 flex flex-col justify-between">
                       <div>
-                        
-                        {/* 🔥 SAFE: PAPER & UNIT BADGES 🔥 */}
                         <div className="flex items-center gap-2 mb-3">
                           {topic.paper_type && (
                             <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-1 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
@@ -207,7 +222,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
               ) : (
                 <div className="py-20 text-center border border-dashed border-white/10 rounded-3xl bg-zinc-950/30">
                   <FileText className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-                  <p className="text-zinc-500 font-medium">Topics are currently being updated.</p>
+                  <p className="text-zinc-500 font-medium">Topics are currently being updated for this unit.</p>
                 </div>
               )}
             </div>

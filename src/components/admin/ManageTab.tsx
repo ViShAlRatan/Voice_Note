@@ -2,12 +2,11 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Smartphone, BookOpen, Terminal, Trash2, MonitorSmartphone, PenTool, HelpCircle } from "lucide-react";
+import { Smartphone, BookOpen, Terminal, Trash2, MonitorSmartphone, PenTool, HelpCircle, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { deleteItemAction } from "@/app/actions/admin";
 import { createClient } from "@/lib/supabase/client";
-
 
 type AllowedTables = "apps" | "notes" | "blogs" | "messages" | "digital_topics" | "question_bank";
 
@@ -20,6 +19,10 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
 
   const [noteMode, setNoteMode] = useState<'handwritten' | 'digital'>('handwritten');
   const [digitalNotes, setDigitalNotes] = useState<any[]>([]);
+
+  // 🔴 Edit Digital Note States
+  const [editDigitalModal, setEditDigitalModal] = useState<{ isOpen: boolean; topic: any }>({ isOpen: false, topic: null });
+  const [editForm, setEditForm] = useState({ title: '', read_time: '', pages: [''] });
 
   // 🔴 Question Bank Management States
   const [qPaper, setQPaper] = useState('paper1');
@@ -68,6 +71,58 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         }
         setDeleteModal({ isOpen: false, table: null, id: null, title: "" }); 
         router.refresh(); 
+      }
+    });
+  }
+
+  // 🔥 Open Edit Modal Logic
+  function openEditModal(topic: any) {
+    let parsedPages = [''];
+    if (topic.pages) {
+      try {
+        parsedPages = typeof topic.pages === 'string' ? JSON.parse(topic.pages) : topic.pages;
+      } catch (e) {
+        parsedPages = [topic.pages];
+      }
+    } else if (topic.content) {
+      parsedPages = (topic.content || "").split('[PAGE_BREAK]');
+    }
+
+    setEditForm({
+      title: topic.title || '',
+      read_time: topic.read_time || '',
+      pages: parsedPages
+    });
+    setEditDigitalModal({ isOpen: true, topic });
+  }
+
+  // 🔥 Handle Update Topic
+  async function handleUpdateTopic(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editDigitalModal.topic) return;
+
+    startTransition(async () => {
+      const { error } = await supabase
+        .from('digital_topics')
+        .update({
+          title: editForm.title,
+          read_time: editForm.read_time,
+          pages: JSON.stringify(editForm.pages)
+        })
+        .eq('id', editDigitalModal.topic.id);
+
+      if (error) {
+        toast.error(`Update failed: ${error.message}`);
+      } else {
+        toast.success("Topic updated successfully!");
+        // Update Local State instantly
+        setDigitalNotes(prev => prev.map(n => 
+          n.id === editDigitalModal.topic.id 
+            ? { ...n, title: editForm.title, read_time: editForm.read_time, pages: JSON.stringify(editForm.pages) } 
+            : n
+        ));
+        setEditDigitalModal({ isOpen: false, topic: null });
+        router.refresh();
       }
     });
   }
@@ -137,9 +192,17 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                         Section/Subject: <span className="text-emerald-400 font-medium">{note.digital_subjects?.name || note.subject_id}</span>
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setDeleteModal({ isOpen: true, table: "digital_topics", id: note.id, title: `Topic: ${note.title}` })} className="border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs w-full sm:w-auto">
-                      <Trash2 className="w-4 h-4 mr-2" /> Delete Topic
-                    </Button>
+                    
+                    {/* EDIT & DELETE BUTTONS */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button variant="outline" size="sm" onClick={() => openEditModal(note)} className="border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs w-full sm:w-auto">
+                        <Pencil className="w-4 h-4 mr-2" /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setDeleteModal({ isOpen: true, table: "digital_topics", id: note.id, title: `Topic: ${note.title}` })} className="border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs w-full sm:w-auto">
+                        <Trash2 className="w-4 h-4 mr-2" /> Delete
+                      </Button>
+                    </div>
+
                   </div>
                 ))}
               </div>
@@ -271,6 +334,93 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
           </div>
         )}
       </div>
+
+      {/* 🔴 EDIT DIGITAL NOTE MODAL 🔴 */}
+      {editDigitalModal.isOpen && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+            
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Pencil className="w-6 h-6 text-emerald-500" /> Edit Digital Note
+              </h3>
+              <button onClick={() => setEditDigitalModal({ isOpen: false, topic: null })} className="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateTopic} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Topic Title</label>
+                  <input 
+                    required 
+                    type="text" 
+                    value={editForm.title} 
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Read Time</label>
+                  <input 
+                    required 
+                    type="text" 
+                    value={editForm.read_time} 
+                    onChange={e => setEditForm({ ...editForm, read_time: e.target.value })} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-sm font-medium text-zinc-300 block border-b border-white/10 pb-2">Edit Pages Content</label>
+                
+                {editForm.pages.map((page, index) => (
+                  <div key={index} className="relative bg-zinc-900/50 p-4 rounded-xl border border-white/10">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-emerald-500 font-bold text-sm">Page {index + 1}</span>
+                      {editForm.pages.length > 1 && (
+                        <button type="button" onClick={() => {
+                          const newPages = editForm.pages.filter((_, i) => i !== index);
+                          setEditForm({ ...editForm, pages: newPages });
+                        }} className="text-red-400 text-xs font-bold hover:underline">
+                          Remove Page
+                        </button>
+                      )}
+                    </div>
+                    <textarea 
+                      required
+                      value={page}
+                      onChange={(e) => {
+                        const newPages = [...editForm.pages];
+                        newPages[index] = e.target.value;
+                        setEditForm({ ...editForm, pages: newPages });
+                      }}
+                      className="flex min-h-[200px] w-full rounded-xl border border-white/5 bg-black/50 px-4 py-3 text-sm text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 custom-scrollbar" 
+                    />
+                  </div>
+                ))}
+                
+                <Button 
+                  type="button" 
+                  onClick={() => setEditForm({ ...editForm, pages: [...editForm.pages, ''] })} 
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white border border-dashed border-white/20 h-12 rounded-xl"
+                >
+                  + Add Another Page
+                </Button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10">
+                <Button type="button" onClick={() => setEditDigitalModal({ isOpen: false, topic: null })} className="w-full sm:w-1/3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl h-12">Cancel</Button>
+                <Button type="submit" disabled={isPending} className="w-full sm:w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12">
+                  {isPending ? "Saving Changes..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Delete Modal */}
       {deleteModal.isOpen && (

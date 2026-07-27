@@ -671,7 +671,7 @@ export default function HomePage() {
           <p>© {new Date().getFullYear()} <span className="font-bold
            text-blue-200 underline">Voice Note</span> Platform. All rights reserved.</p>
           <p className="flex items-center gap-1">Developed by <span className="font-bold
-           text-blue-200 underline">VISHAL</span> With ❤️</p>
+           text-blue-200 underline">VISHAL</span> With AI ❤️</p>
           <p className="flex items-center gap-1">Built with <span className="font-bold
            text-blue-200 underline">Next.js 15, Tailwind v4,</span> and <span className="font-bold
             text-blue-200 underline">Supabase.</span></p>

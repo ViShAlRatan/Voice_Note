@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createAppAction, createNoteAction, createBlogAction, createDigitalNoteAction, createDigitalSubjectAction, createQuestionAction, createBulkQuestionsAction } from "@/app/actions/admin"; 
 
-
 // SMART PROGRESS SIMULATOR 
 const startSimulatedProgress = (fileSize: number, setProgress: (val: number | null) => void) => {
   setProgress(0);
@@ -34,8 +33,6 @@ export default function PublishTab() {
   const supabase = createClient();
   const [isPending, startTransition] = useTransition();
 
-
-
   // 🔴 CANCEL FLAG REF
   const isCancelledRef = useRef({ logo: false, screenshots: false, apk: false });
 
@@ -46,6 +43,10 @@ export default function PublishTab() {
   const [apkMode, setApkMode] = useState<'upload' | 'link'>('upload');
   const [noteMode, setNoteMode] = useState<'handwritten' | 'digital' | 'questions'>('digital');
   
+  // 🔥 NAYA: Handwritten notes ke liye PDF Mode 🔥
+  const [pdfMode, setPdfMode] = useState<'upload' | 'link'>('upload');
+  const [externalPdfUrl, setExternalPdfUrl] = useState("");
+
   // Digital Notes ke Multi-pages ke liye state
   const [topicPages, setTopicPages] = useState<string[]>(['']); 
 
@@ -61,8 +62,8 @@ export default function PublishTab() {
     correct_answer: 'A',
     explanation: ''
   });
-    const [isQuestionPending, setIsQuestionPending] = useState(false);
-    const [questionUploadType, setQuestionUploadType] = useState<'single' | 'bulk'>('single');
+  const [isQuestionPending, setIsQuestionPending] = useState(false);
+  const [questionUploadType, setQuestionUploadType] = useState<'single' | 'bulk'>('single');
 
   const [externalApkUrl, setExternalApkUrl] = useState("");
   const [externalApkSize, setExternalApkSize] = useState("");
@@ -134,7 +135,7 @@ export default function PublishTab() {
   };
 
   // ==========================================
-  //       UPLOAD HANDLERS 
+  //      UPLOAD HANDLERS 
   // ==========================================
 
   // 1. LOGO UPLOAD
@@ -333,47 +334,54 @@ export default function PublishTab() {
     });
   };
 
+  // 🔥 HANDWRITTEN NOTES PUBLISH UPDATED FOR DRIVE LINK 🔥
   const handleNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget; 
     
-    if (!noteFile) { toast.error("Please select a PDF file to upload."); return; }
+    if (pdfMode === 'upload' && !noteFile) { toast.error("Please select a PDF file to upload."); return; }
+    if (pdfMode === 'link' && !externalPdfUrl) { toast.error("Please paste the Google Drive link."); return; }
     
     setIsNoteUploading(true);
-    const interval = startSimulatedProgress(noteFile.size, setNoteProgress);
     const formData = new FormData(form);
-    const fileName = `${Date.now()}-${noteFile.name.replace(/\s+/g, '-')}`;
 
-    try {
-      const { error: uploadError } = await supabase.storage.from('notes').upload(fileName, noteFile);
-      if (uploadError) throw uploadError;
+    if (pdfMode === 'upload') {
+      const interval = startSimulatedProgress(noteFile!.size, setNoteProgress);
+      const fileName = `${Date.now()}-${noteFile!.name.replace(/\s+/g, '-')}`;
 
-      const { data: publicUrlData } = supabase.storage.from('notes').getPublicUrl(fileName);
-      formData.append("file_url", publicUrlData.publicUrl);
+      try {
+        const { error: uploadError } = await supabase.storage.from('notes').upload(fileName, noteFile!);
+        if (uploadError) throw uploadError;
 
-      clearInterval(interval);
-      setNoteProgress(100);
+        const { data: publicUrlData } = supabase.storage.from('notes').getPublicUrl(fileName);
+        formData.append("file_url", publicUrlData.publicUrl);
 
-      startTransition(async () => {
-        const result = await createNoteAction(formData);
-        if (result?.error) toast.error(result.error);
-        else { 
-          toast.success("Handwritten Notes Published Successfully!"); 
-          form.reset(); 
-          setNoteFile(null); setNoteProgress(null);
-          setInputKeys(prev => ({ ...prev, note: Date.now() }));
-          router.refresh(); 
-        }
-        setIsNoteUploading(false);
-      });
-    } catch (error) {
-      clearInterval(interval);
-      setNoteProgress(null); setIsNoteUploading(false);
-      toast.error("File upload failed!");
+        clearInterval(interval);
+        setNoteProgress(100);
+      } catch (error) {
+        clearInterval(interval);
+        setNoteProgress(null); setIsNoteUploading(false);
+        toast.error("File upload failed!");
+        return;
+      }
+    } else {
+      formData.append("file_url", externalPdfUrl);
     }
+
+    startTransition(async () => {
+      const result = await createNoteAction(formData);
+      if (result?.error) toast.error(result.error);
+      else { 
+        toast.success("Handwritten Notes Published Successfully!"); 
+        form.reset(); 
+        setNoteFile(null); setNoteProgress(null); setExternalPdfUrl("");
+        setInputKeys(prev => ({ ...prev, note: Date.now() }));
+        router.refresh(); 
+      }
+      setIsNoteUploading(false);
+    });
   };
 
-  // 🔥 UPDATED: DIGITAL NOTE PUBLISH (Handles Multi-page JSON) 🔥
   const handleDigitalNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -381,8 +389,6 @@ export default function PublishTab() {
     
     startTransition(async () => {
       const formData = new FormData(form);
-      
-      // Multi-page textareas ka array JSON banakar bhej rahe hain
       formData.append("pages", JSON.stringify(topicPages));
       
       const result = await createDigitalNoteAction(formData);
@@ -392,7 +398,7 @@ export default function PublishTab() {
       } else { 
         toast.success(result.message || "Digital Topic Published!"); 
         form.reset(); 
-        setTopicPages(['']); // form reset ke baad page state bhi wapas default kardi
+        setTopicPages(['']); 
         router.refresh(); 
       }
       setIsDigitalNotePending(false);
@@ -552,23 +558,41 @@ export default function PublishTab() {
               <div className="space-y-2"><Label className="text-zinc-300">Subject Category</Label><Input name="subject" required disabled={isNoteUploading} placeholder="e.g. Database Systems" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
             </div>
             <div className="space-y-2"><Label className="text-zinc-300">Description</Label><Input name="description" required disabled={isNoteUploading} placeholder="Topics covered in this PDF..." className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
-            <div className="space-y-2">
-              <Label className="text-zinc-300">Upload Document (PDF)</Label>
-              <div className="relative w-full h-12 rounded-xl border border-dashed border-white/20 bg-black/50 hover:bg-white/5 transition-colors flex items-center justify-between px-4 overflow-hidden">
-                <input key={inputKeys.note} type="file" accept=".pdf" onChange={(e) => setNoteFile(e.target.files?.[0] || null)} disabled={isNoteUploading} className="absolute inset-0 opacity-0 cursor-pointer z-0" />
-                <div className="flex items-center gap-2 pointer-events-none text-sm text-zinc-400 z-0">
-                  <UploadCloud className="w-4 h-4 text-emerald-400"/>
-                  {noteFile ? <span className="text-emerald-400 font-bold ml-1">{noteFile.name}</span> : "Click to select .pdf file"}
+            
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-zinc-300">Upload Document (PDF)</Label>
+                <div className="flex bg-white/5 rounded-lg p-1">
+                  <button type="button" onClick={() => setPdfMode('upload')} className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${pdfMode === 'upload' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}>Upload File</button>
+                  <button type="button" onClick={() => setPdfMode('link')} className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${pdfMode === 'link' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}>Drive Link</button>
                 </div>
-                {noteFile && (
-                  <button type="button" onClick={handleNoteCancel} className="relative z-10 p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 hover:text-red-300 transition-colors shadow-sm" title="Remove PDF">
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
               </div>
+
+              {pdfMode === 'upload' ? (
+                <div className="relative w-full h-12 rounded-xl border border-dashed border-white/20 bg-black/50 hover:bg-white/5 transition-colors flex items-center justify-between px-4 overflow-hidden">
+                  <input key={inputKeys.note} type="file" accept=".pdf" onChange={(e) => setNoteFile(e.target.files?.[0] || null)} disabled={isNoteUploading} className="absolute inset-0 opacity-0 cursor-pointer z-0" />
+                  <div className="flex items-center gap-2 pointer-events-none text-sm text-zinc-400 z-0">
+                    <UploadCloud className="w-4 h-4 text-emerald-400"/>
+                    {noteFile ? <span className="text-emerald-400 font-bold ml-1">{noteFile.name}</span> : "Click to select .pdf file"}
+                  </div>
+                  {noteFile && (
+                    <button type="button" onClick={handleNoteCancel} className="relative z-10 p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 hover:text-red-300 transition-colors shadow-sm" title="Remove PDF">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="relative animate-in fade-in duration-300">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <LinkIcon className="h-4 w-4 text-zinc-500" />
+                  </div>
+                  <Input type="url" value={externalPdfUrl} onChange={(e) => setExternalPdfUrl(e.target.value)} disabled={isNoteUploading} placeholder="https://drive.google.com/file/d/... (Set sharing to Viewer only)" className="bg-black/50 border-white/10 text-white h-12 pl-10 rounded-xl" />
+                </div>
+              )}
             </div>
+
             <Button type="submit" disabled={isNoteUploading} className="w-full bg-white text-black hover:bg-zinc-200  h-11 rounded-xl mt-4">
-              {isNoteUploading ? <><Loader2 className="animate-spin w-4 h-4 mr-2"/> Uploading Note... {noteProgress ? `${noteProgress}%` : ''}</> : "Publish PDF Note"}
+              {isNoteUploading ? <><Loader2 className="animate-spin w-4 h-4 mr-2"/> Publishing Note... {noteProgress ? `${noteProgress}%` : ''}</> : "Publish PDF Note"}
             </Button>
           </form>
         )}
@@ -577,7 +601,6 @@ export default function PublishTab() {
         {noteMode === 'digital' && (
           <div className="space-y-4 animate-in fade-in duration-300">
             
-            {/* 🔥 MISSING PIECE 1: ADD NEW SUBJECT MODAL 🔥 */}
             {isSubjectModalOpen && (
               <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-zinc-950 border border-emerald-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative">
@@ -608,10 +631,34 @@ export default function PublishTab() {
 
             <form onSubmit={handleDigitalNotePublish} className="space-y-6">
               
-              {/* 🔥 MISSING PIECE 2: SELECT SUBJECT DROPDOWN 🔥 */}
+              {/* 🔥 Target Syllabus (Moved to STEP 1) 🔥 */}
+              <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/10 space-y-4">
+                <h4 className="text-emerald-400 font-bold mb-2">1. Select Target Syllabus</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">UGC NET Paper</Label>
+                    <select name="paper_type" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                      <option value="">-- Select Paper --</option>
+                      <option value="paper1">Paper 1 (General)</option>
+                      <option value="paper2">Paper 2 (Computer Science)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Select Unit</Label>
+                    <select name="unit_number" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                      <option value="">-- Select Unit --</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(unit => (
+                        <option key={unit} value={`unit${unit}`}>Unit {unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🔥 Subject Category (Moved to STEP 2) 🔥 */}
               <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/10 space-y-4">
                 <div className="space-y-2 relative">
-                  <Label className="text-emerald-400 font-bold mb-2 block">1. Select Subject Category</Label>
+                  <Label className="text-emerald-400 font-bold mb-2 block">2. Select Subject Category</Label>
                   <div className="flex gap-2">
                     <select 
                       name="subject_id" required disabled={isDigitalNotePending} 
@@ -623,30 +670,6 @@ export default function PublishTab() {
                     <Button type="button" onClick={() => setIsSubjectModalOpen(true)} className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 h-11 px-4 rounded-xl shrink-0">
                       + Add Subject
                     </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Paper Type & Unit */}
-              <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/10 space-y-4">
-                <h4 className="text-emerald-400 font-bold mb-2">2. Select Target Syllabus</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-zinc-300">UGC NET Paper</Label>
-                    <select name="paper_type" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3">
-                      <option value="">-- Select Paper --</option>
-                      <option value="paper1">Paper 1 (General)</option>
-                      <option value="paper2">Paper 2 (Computer Science)</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-zinc-300">Select Unit</Label>
-                    <select name="unit_number" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3">
-                      <option value="">-- Select Unit --</option>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(unit => (
-                        <option key={unit} value={`unit${unit}`}>Unit {unit}</option>
-                      ))}
-                    </select>
                   </div>
                 </div>
               </div>
@@ -709,7 +732,6 @@ export default function PublishTab() {
         )}
 
         {/* --- FORM C: QUESTION BANK --- */}
-       {/* FORM C: QUESTION BANK */}
         {noteMode === 'questions' && (
           <div className="space-y-6 animate-in fade-in duration-300">
             
