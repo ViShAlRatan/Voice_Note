@@ -56,24 +56,52 @@ export async function createNoteAction(formData: FormData) {
   return { success: true, message: "Study Notes published successfully!" };
 }
 
-// Add this in app/actions/admin.ts
+// 🔥 CRASH-PROOF DIGITAL NOTE ACTION 🔥
 export async function createDigitalNoteAction(formData: FormData) {
   const supabase = await createClient();
 
+  // 1. SAFE TRIM: Agar subject_id null aaya toh crash nahi hoga
   const rawSubjectId = formData.get("subject_id") as string;
-  const subject_id = rawSubjectId.trim().toLowerCase();
+  const subject_id = (rawSubjectId || "").trim().toLowerCase();
+
+  // 2. Naye Fields Fetch Karein
+  const paper_type = formData.get("paper_type") as string;
+  const unit_number = formData.get("unit_number") as string;
 
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const read_time = formData.get("read_time") as string;
+  
+  // Purana content aur naya Multi-page content handle karna
   const content = formData.get("content") as string;
+  const pagesRaw = formData.get("pages") as string;
+  
+  let pages = null;
+  if (pagesRaw) {
+    try { pages = JSON.parse(pagesRaw); } catch(e) {}
+  }
+
+  // Database insert object
+  const insertData: any = {
+    subject_id, 
+    title, 
+    description, 
+    read_time, 
+    paper_type, 
+    unit_number
+  };
+  
+  if (content) insertData.content = content;
+  if (pages) insertData.pages = pages;
 
   // Inserting into digital_topics table
-  const { error } = await supabase.from("digital_topics").insert({
-    subject_id, title, description, read_time, content
-  });
+  const { error } = await supabase.from("digital_topics").insert(insertData);
   
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("Insert Error:", error.message);
+    return { error: error.message };
+  }
+  
   revalidatePath("/notes"); 
   revalidatePath("/admin");
   return { success: true, message: "Digital Note Published Successfully!" };
@@ -104,20 +132,20 @@ export async function deleteItemAction(
       .from(table)
       .delete()
       .eq("id", id)
-      .select(); // Select return karne se pata chalta hai ki sach me delete hua ya nahi
+      .select();
 
     if (error) {
       console.error(`Error deleting from ${table}:`, error.message);
       return { error: `Database Error: ${error.message}` };
     }
 
-    // Agar data array khali hai, iska matlab ID galat thi ya item nahi mila
+    // Agar data array khali hai, iska matlab ID galat thi
     if (!data || data.length === 0) {
        console.error(`Item with ID ${id} not found in ${table}`);
        return { error: "Item not found in database!" };
     }
 
-    // 2. Cache clear karna taaki refresh hone par purana data wapas na dikhe
+    // 2. Cache clear karna
     revalidatePath("/admin");
     revalidatePath("/apps");
     revalidatePath("/notes");
@@ -132,7 +160,6 @@ export async function deleteItemAction(
 }
 
 // ---   USER MANAGEMENT ACTIONS ---
-
 export async function updateUserRoleAction(id: string, newRole: "admin" | "user") {
   const supabase = await createClient();
   const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", id);
@@ -195,4 +222,57 @@ export async function createDigitalSubjectAction(id: string, name: string, icon:
   revalidatePath('/notes'); 
   revalidatePath('/admin');
   return { success: true, message: "New Subject Added!" };
+}
+
+// 🔥 QUESTION BANK ACTION 🔥
+export async function createQuestionAction(data: {
+  paper_type: string;
+  unit_number: string;
+  question: string;
+  opta: string;
+  optb: string;
+  optc: string;
+  optd: string;
+  correct_answer: string;
+  explanation: string;
+}) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("question_bank").insert(data);
+  
+  if (error) {
+    console.error("Question Insert Error:", error.message);
+    return { error: error.message };
+  }
+  
+  revalidatePath("/practice");
+  revalidatePath("/admin");
+  return { success: true, message: "Question saved successfully!" };
+}
+
+export async function createBulkQuestionsAction(questionsArray: any[]) {
+  const supabase = await createClient();
+
+  const formattedData = questionsArray.map((q) => ({
+    paper_type: q.paper_type || 'paper1',
+    unit_number: q.unit_number || 'unit1',
+    question: q.question,
+    opta: q.opta,
+    optb: q.optb,
+    optc: q.optc,
+    optd: q.optd,
+    correct_answer: q.correct_answer?.toUpperCase() || 'A',
+    explanation: q.explanation || ''
+  }));
+
+  const { error } = await supabase.from("question_bank").insert(formattedData);
+
+  if (error) {
+    console.error("Bulk Insert Error:", error.message);
+    return { error: error.message };
+  }
+
+  revalidatePath("/practice");
+  revalidatePath("/admin");
+  return { success: true };
 }

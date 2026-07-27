@@ -2,14 +2,14 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Smartphone, BookOpen, Terminal, Trash2, MonitorSmartphone, PenTool } from "lucide-react";
+import { Smartphone, BookOpen, Terminal, Trash2, MonitorSmartphone, PenTool, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { deleteItemAction } from "@/app/actions/admin";
 import { createClient } from "@/lib/supabase/client";
 
 
-type AllowedTables = "apps" | "notes" | "blogs" | "messages" | "digital_topics";
+type AllowedTables = "apps" | "notes" | "blogs" | "messages" | "digital_topics" | "question_bank";
 
 export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
   const router = useRouter();
@@ -21,14 +21,36 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
   const [noteMode, setNoteMode] = useState<'handwritten' | 'digital'>('handwritten');
   const [digitalNotes, setDigitalNotes] = useState<any[]>([]);
 
+  // 🔴 Question Bank Management States
+  const [qPaper, setQPaper] = useState('paper1');
+  const [qUnit, setQUnit] = useState('unit1');
+  const [bankQuestions, setBankQuestions] = useState<any[]>([]);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
+
   useEffect(() => {
     const fetchDigitalNotes = async () => {
-      // Ye query sirf Specific Topics la rahi hai
       const { data } = await supabase.from("digital_topics").select("*, digital_subjects(name)").order("created_at", { ascending: false });
       if (data) setDigitalNotes(data);
     };
     fetchDigitalNotes();
   }, [supabase]);
+
+  // 🔥 Question Bank fetch karne ke liye jab paper ya unit change ho
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      const { data } = await supabase
+        .from("question_bank")
+        .select("id, question, unit_number, paper_type")
+        .eq("paper_type", qPaper)
+        .eq("unit_number", qUnit);
+      
+      if (data) {
+        setBankQuestions(data);
+        setSelectedQuestionId(''); // Reset selection
+      }
+    };
+    fetchQuestions();
+  }, [qPaper, qUnit, supabase]);
 
   function confirmDeleteContent() {
     if (!deleteModal.table || !deleteModal.id) return;
@@ -39,6 +61,10 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         toast.success("Item deleted successfully!"); 
         if (deleteModal.table === "digital_topics") {
           setDigitalNotes(prev => prev.filter(n => n.id !== deleteModal.id));
+        }
+        if (deleteModal.table === "question_bank") {
+          setBankQuestions(prev => prev.filter(q => q.id !== deleteModal.id));
+          setSelectedQuestionId('');
         }
         setDeleteModal({ isOpen: false, table: null, id: null, title: "" }); 
         router.refresh(); 
@@ -95,7 +121,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
           </button>
         </div>
 
-        {/* 1. DIGITAL NOTES LIST (SPECIFIC TOPICS) */}
+        {/* 1. DIGITAL NOTES LIST */}
         {noteMode === 'digital' && (
           <div className="animate-in fade-in duration-300">
             {digitalNotes.length === 0 ? ( <p className="text-sm text-zinc-500 italic text-center py-8 bg-black/20 rounded-2xl">No digital topics published yet.</p> ) : (
@@ -103,7 +129,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                 {digitalNotes.map((note: any) => (
                   <div key={note.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-black/40 border border-white/10 gap-3">
                     <div>
-                      {/* 🔥 UI CHANGED: Taaki clear dikhe ki ye Specific Topic hai 🔥 */}
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">Topic</span>
                         <p className="font-semibold text-white text-base">{note.title}</p>
@@ -112,7 +137,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                         Section/Subject: <span className="text-emerald-400 font-medium">{note.digital_subjects?.name || note.subject_id}</span>
                       </p>
                     </div>
-                    {/* Delete button sirf us specific note/topic ko target kar raha hai */}
                     <Button variant="outline" size="sm" onClick={() => setDeleteModal({ isOpen: true, table: "digital_topics", id: note.id, title: `Topic: ${note.title}` })} className="border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs w-full sm:w-auto">
                       <Trash2 className="w-4 h-4 mr-2" /> Delete Topic
                     </Button>
@@ -123,7 +147,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
           </div>
         )}
 
-        {/* 2. HANDWRITTEN NOTES LIST (PDFs) */}
+        {/* 2. HANDWRITTEN NOTES LIST */}
         {noteMode === 'handwritten' && (
           <div className="animate-in fade-in duration-300">
             {safeNotes.length === 0 ? ( <p className="text-sm text-zinc-500 italic text-center py-8 bg-black/20 rounded-2xl">No handwritten PDFs published yet.</p> ) : (
@@ -131,7 +155,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                 {safeNotes.map((note: any) => (
                   <div key={note.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-black/40 border border-white/10 gap-3">
                     <div>
-                      {/* 🔥 UI CHANGED: Taaki clear dikhe ki ye PDF hai 🔥 */}
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 bg-white/10 px-2 py-0.5 rounded">PDF File</span>
                         <p className="font-semibold text-white text-base">{note.title}</p>
@@ -147,6 +170,82 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
             )}
           </div>
         )}
+      </div>
+
+      {/* 🔴 MANAGE QUESTIONS SECTION WITH DROPDOWN */}
+      <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0"><HelpCircle className="w-5 h-5" /></div>
+            <div><h2 className="text-xl font-semibold">Manage Questions</h2><p className="text-xs text-zinc-400">Select paper & unit to delete specific questions</p></div>
+          </div>
+        </div>
+
+        <div className="space-y-4 bg-black/40 p-6 rounded-2xl border border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400 font-medium">Select Paper</label>
+              <select 
+                value={qPaper} 
+                onChange={(e) => setQPaper(e.target.value)} 
+                className="w-full bg-black border border-white/10 text-white h-11 rounded-xl px-3 text-sm focus:outline-none focus:border-blue-500"
+              >
+                <option value="paper1">Paper 1 (General)</option>
+                <option value="paper2">Paper 2 (Computer Science)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400 font-medium">Select Unit</label>
+              <select 
+                value={qUnit} 
+                onChange={(e) => setQUnit(e.target.value)} 
+                className="w-full bg-black border border-white/10 text-white h-11 rounded-xl px-3 text-sm focus:outline-none focus:border-blue-500"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(u => (
+                  <option key={u} value={`unit${u}`}>Unit {u}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1 pt-2">
+            <label className="text-xs text-zinc-400 font-medium">Select Specific Question to Delete</label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select 
+                value={selectedQuestionId} 
+                onChange={(e) => setSelectedQuestionId(e.target.value)} 
+                className="flex-1 bg-black border border-white/10 text-white h-11 rounded-xl px-3 text-sm focus:outline-none focus:border-blue-500 truncate"
+              >
+                <option value="">-- Choose from {bankQuestions.length} questions --</option>
+                {bankQuestions.map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.question}
+                  </option>
+                ))}
+              </select>
+
+              <Button 
+                variant="outline" 
+                disabled={!selectedQuestionId}
+                onClick={() => {
+                  const qObj = bankQuestions.find(q => q.id === selectedQuestionId);
+                  if (qObj) {
+                    setDeleteModal({ 
+                      isOpen: true, 
+                      table: "question_bank", 
+                      id: qObj.id, 
+                      title: `Question: ${qObj.question}` 
+                    });
+                  }
+                }} 
+                className="border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 h-11 text-xs shrink-0 disabled:opacity-40"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Delete Selected Question
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* MANAGE BLOGS */}
@@ -178,7 +277,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
             <h3 className="text-xl font-bold mb-2">Confirm Content Deletion</h3>
-            <p className="text-zinc-400 text-sm mb-6">Are you sure you want to delete <br/><b className="text-white mt-2 inline-block bg-white/5 px-2 py-1 rounded">{deleteModal.title}</b>?</p>
+            <p className="text-zinc-400 text-sm mb-6">Are you sure you want to delete <br/><b className="text-white mt-2 inline-block bg-white/5 px-2 py-1 rounded max-w-full truncate">{deleteModal.title}</b>?</p>
             <div className="flex gap-3">
               <Button onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, title: "" })} className="w-1/2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl h-11">Cancel</Button>
               <Button onClick={confirmDeleteContent} className="w-1/2 bg-red-600 hover:bg-red-700 text-white rounded-xl h-11">{isPending ? "Deleting..." : "Delete"}</Button>

@@ -10,11 +10,17 @@ export default function DigitalSearch({ allTopics }: { allTopics: any[] }) {
   const searchRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // User ki query ke hisaab se topics filter karna
-  const filteredTopics = allTopics.filter(topic =>
-    topic.title.toLowerCase().includes(query.toLowerCase()) ||
-    (topic.digital_subjects?.name && topic.digital_subjects.name.toLowerCase().includes(query.toLowerCase()))
-  );
+  // 🔥 CRASH-PROOF: Agar query null/undefined ho jaye, toh use empty string maan lo
+  const safeQuery = query || "";
+
+  // 🔥 CRASH-PROOF: User ki query ke hisaab se topics filter karna
+  const filteredTopics = (allTopics || []).filter(topic => {
+    const title = topic?.title || "";
+    const subjectName = topic?.digital_subjects?.name || "";
+    
+    return title.toLowerCase().includes(safeQuery.toLowerCase()) ||
+           subjectName.toLowerCase().includes(safeQuery.toLowerCase());
+  });
 
   // Agar user bahar click kare toh dropdown band ho jaye
   useEffect(() => {
@@ -53,8 +59,8 @@ export default function DigitalSearch({ allTopics }: { allTopics: any[] }) {
         />
       </div>
 
-      {/* 🔴 SEARCH DROPDOWN RESULTS 🔴 */}
-      {isOpen && query.trim() !== "" && (
+      {/* 🔴 SEARCH DROPDOWN RESULTS (SAFE TRIM) 🔴 */}
+      {isOpen && safeQuery.trim() !== "" && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
           {filteredTopics.length > 0 ? (
             <div className="p-2">
@@ -69,7 +75,7 @@ export default function DigitalSearch({ allTopics }: { allTopics: any[] }) {
                       <FileText className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">{topic.title}</p>
+                      <p className="text-sm font-semibold text-white">{topic.title || "Untitled Topic"}</p>
                       <p className="text-xs text-zinc-500 mt-0.5">{topic.digital_subjects?.name || topic.subject_id}</p>
                     </div>
                   </div>
@@ -81,7 +87,7 @@ export default function DigitalSearch({ allTopics }: { allTopics: any[] }) {
             // Agar topic nahi mila toh ye message dikhayega
             <div className="p-8 text-center">
               <p className="text-zinc-300 font-medium text-lg">No topic found! 🚫</p>
-              <p className="text-sm text-zinc-500 mt-1">We couldn't find anything matching "{query}".</p>
+              <p className="text-sm text-zinc-500 mt-1">We couldn't find anything matching "{safeQuery}".</p>
             </div>
           )}
         </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Sparkles, Loader2, Trash2, Layers, PlusCircle, Mail, MessageSquare, 
-  Users, LogOut, Home, Wrench, Power, Star 
+  Users, LogOut, Home, Wrench, Power, Star, Trophy 
 } from "lucide-react";
 import { signOutUser } from "@/app/actions/auth";
 import { deleteItemAction } from "@/app/actions/admin";
@@ -15,17 +15,21 @@ import { createClient } from "@/lib/supabase/client";
 import PublishTab from "@/components/admin/PublishTab";
 import ManageTab from "@/components/admin/ManageTab";
 import UsersTab from "@/components/admin/UsersTab";
-import ReviewsTab from "@/components/admin/ReviewsTab"; // 🔥 Naya Tab Import Kiya
+import ReviewsTab from "@/components/admin/ReviewsTab";
 
 export default function AdminDashboardClient({ initialApps, initialNotes, initialBlogs, initialMessages, initialProfiles }: any) {
   const router = useRouter();
   const supabase = createClient();
   
-  // 🔥 State mein "reviews" add kiya
-  const [activeTab, setActiveTab] = useState<"publish" | "manage" | "messages" | "users" | "maintenance" | "reviews">("publish");
+  // 🔥 State mein "performances" add kiya
+  const [activeTab, setActiveTab] = useState<"publish" | "manage" | "messages" | "users" | "maintenance" | "reviews" | "performances">("publish");
   const [isLoggingOut, startLogoutTransition] = useTransition();
 
-  // Maintenance & Messages States (Inko yahin rakha hai taaki zyada files na banani padein)
+  // Performance Tab State
+  const [allPerformances, setAllPerformances] = useState<any[]>([]);
+  const [isFetchingPerf, setIsFetchingPerf] = useState(false);
+
+  // Maintenance & Messages States
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [isFetchingMaintenance, setIsFetchingMaintenance] = useState(true);
   
@@ -41,6 +45,19 @@ export default function AdminDashboardClient({ initialApps, initialNotes, initia
         setIsFetchingMaintenance(false);
       };
       fetchMaintenanceStatus();
+    }
+
+    if (activeTab === "performances") {
+      setIsFetchingPerf(true);
+      const fetchAllPerformances = async () => {
+        const { data } = await supabase
+          .from('user_performances')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (data) setAllPerformances(data);
+        setIsFetchingPerf(false);
+      };
+      fetchAllPerformances();
     }
   }, [activeTab, supabase]);
 
@@ -134,7 +151,11 @@ export default function AdminDashboardClient({ initialApps, initialNotes, initia
             <Users className="w-4 h-4" /> User Control <span className="ml-1 px-1.5 py-0.5 rounded-full bg-indigo-500/30 text-xs font-mono">{safeProfiles.length}</span>
           </button>
 
-          {/* 🔥 Naya User Reviews Button 🔥 */}
+          {/* 🔥 Performance Button Added 🔥 */}
+          <button onClick={() => setActiveTab("performances")} className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-medium transition-all border shrink-0 ${activeTab === "performances" ? "bg-emerald-500 text-black border-emerald-400 shadow-xl shadow-emerald-500/20 scale-105 font-bold" : "bg-zinc-950/60 text-zinc-300 border-white/10 hover:bg-zinc-900 hover:text-white"}`}>
+            <Trophy className="w-4 h-4" /> User Performances
+          </button>
+
           <button onClick={() => setActiveTab("reviews")} className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-medium transition-all border shrink-0 ${activeTab === "reviews" ? "bg-amber-500 text-white border-amber-400 shadow-xl shadow-amber-500/20 scale-105" : "bg-zinc-950/60 text-zinc-300 border-white/10 hover:bg-zinc-900 hover:text-white"}`}>
             <Star className="w-4 h-4" /> User Reviews
           </button>
@@ -145,17 +166,65 @@ export default function AdminDashboardClient({ initialApps, initialNotes, initia
         </div>
       </div>
 
-      {/* ---  TAB RENDERING  --- */}
+      {/* --- TAB RENDERING --- */}
       {activeTab === "publish" && <PublishTab />}
       
       {activeTab === "manage" && <ManageTab safeApps={safeApps} safeNotes={safeNotes} safeBlogs={safeBlogs} />}
       
       {activeTab === "users" && <UsersTab safeProfiles={safeProfiles} />}
 
-      {/* 🔥 Naya Reviews Tab Render 🔥 */}
       {activeTab === "reviews" && <ReviewsTab />}
 
-      {/* TAB 3: MESSAGES (Kept inline) */}
+      {/* 🔥 User Performances Tab Content 🔥 */}
+      {activeTab === "performances" && (
+        <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
+          <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400"><Trophy className="w-5 h-5" /></div>
+                <div><h2 className="text-xl font-semibold">Students Performance</h2><p className="text-xs text-zinc-400">Track test scores and history of all users</p></div>
+              </div>
+            </div>
+
+            {isFetchingPerf ? (
+              <div className="text-center py-12 flex flex-col items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-2" />
+                <p className="text-sm text-zinc-400">Loading student performances...</p>
+              </div>
+            ) : allPerformances.length === 0 ? (
+              <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-black/30">
+                <Trophy className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
+                <p className="text-sm text-zinc-400 font-medium">No test attempts recorded yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-zinc-400 text-xs uppercase">
+                      <th className="py-3 px-4">User Email</th>
+                      <th className="py-3 px-4">Paper Type</th>
+                      <th className="py-3 px-4">Score</th>
+                      <th className="py-3 px-4">Date & Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-sm">
+                    {allPerformances.map((p) => (
+                      <tr key={p.id} className="hover:bg-white/5">
+                        <td className="py-4 px-4 font-medium text-white">{p.user_email || 'Unknown User'}</td>
+                        <td className="py-4 px-4 text-zinc-300 uppercase">{p.paper_type}</td>
+                        <td className="py-4 px-4 font-bold text-emerald-400">{p.score} / {p.total_questions}</td>
+                        <td className="py-4 px-4 text-zinc-500 text-xs">{new Date(p.created_at).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: MESSAGES */}
       {activeTab === "messages" && (
         <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
           <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
@@ -210,7 +279,7 @@ export default function AdminDashboardClient({ initialApps, initialNotes, initia
         </div>
       )}
 
-      {/* TAB 5: MAINTENANCE MODE (Kept inline) */}
+      {/* TAB 5: MAINTENANCE MODE */}
       {activeTab === "maintenance" && (
         <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
           <div className="rounded-3xl border border-purple-500/20 bg-zinc-950/80 backdrop-blur-xl p-8 shadow-2xl shadow-blue-500/5 relative">

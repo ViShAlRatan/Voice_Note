@@ -8,7 +8,8 @@ import { Smartphone, BookOpen, Terminal, Loader2, UploadCloud, X, Link as LinkIc
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { createAppAction, createNoteAction, createBlogAction, createDigitalNoteAction, createDigitalSubjectAction } from "@/app/actions/admin"; 
+import { createAppAction, createNoteAction, createBlogAction, createDigitalNoteAction, createDigitalSubjectAction, createQuestionAction, createBulkQuestionsAction } from "@/app/actions/admin"; 
+
 
 // SMART PROGRESS SIMULATOR 
 const startSimulatedProgress = (fileSize: number, setProgress: (val: number | null) => void) => {
@@ -33,13 +34,15 @@ export default function PublishTab() {
   const supabase = createClient();
   const [isPending, startTransition] = useTransition();
 
+
+
   // 🔴 CANCEL FLAG REF
   const isCancelledRef = useRef({ logo: false, screenshots: false, apk: false });
 
   // 🔴 INPUT KEYS
   const [inputKeys, setInputKeys] = useState({ logo: Date.now(), screenshots: Date.now()+1, apk: Date.now()+2, note: Date.now()+3 });
 
-  // 🔥 ALL MODES & STATES (Now properly inside the component) 🔥
+  // 🔥 ALL MODES & STATES 🔥
   const [apkMode, setApkMode] = useState<'upload' | 'link'>('upload');
   const [noteMode, setNoteMode] = useState<'handwritten' | 'digital' | 'questions'>('digital');
   
@@ -51,10 +54,15 @@ export default function PublishTab() {
     paper_type: 'paper1',
     unit_number: 'unit1',
     question: '',
-    optA: '', optB: '', optC: '', optD: '',
+    opta: '', 
+    optb: '', 
+    optc: '', 
+    optd: '',
     correct_answer: 'A',
     explanation: ''
   });
+    const [isQuestionPending, setIsQuestionPending] = useState(false);
+    const [questionUploadType, setQuestionUploadType] = useState<'single' | 'bulk'>('single');
 
   const [externalApkUrl, setExternalApkUrl] = useState("");
   const [externalApkSize, setExternalApkSize] = useState("");
@@ -365,19 +373,26 @@ export default function PublishTab() {
     }
   };
 
+  // 🔥 UPDATED: DIGITAL NOTE PUBLISH (Handles Multi-page JSON) 🔥
   const handleDigitalNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     setIsDigitalNotePending(true);
     
     startTransition(async () => {
-      // Yahan abhi temporary array bhej rahe hain actions file mein update karna hoga backend logic ke liye
-      const result = await createDigitalNoteAction(new FormData(form));
-      if (result?.error) toast.error(result.error);
-      else { 
+      const formData = new FormData(form);
+      
+      // Multi-page textareas ka array JSON banakar bhej rahe hain
+      formData.append("pages", JSON.stringify(topicPages));
+      
+      const result = await createDigitalNoteAction(formData);
+      
+      if (result?.error) {
+        toast.error(result.error);
+      } else { 
         toast.success(result.message || "Digital Topic Published!"); 
         form.reset(); 
-        setTopicPages(['']); // reset pages
+        setTopicPages(['']); // form reset ke baad page state bhi wapas default kardi
         router.refresh(); 
       }
       setIsDigitalNotePending(false);
@@ -561,11 +576,60 @@ export default function PublishTab() {
         {/* --- FORM B: DIGITAL NOTES (HTML/MARKDOWN) --- */}
         {noteMode === 'digital' && (
           <div className="space-y-4 animate-in fade-in duration-300">
+            
+            {/* 🔥 MISSING PIECE 1: ADD NEW SUBJECT MODAL 🔥 */}
+            {isSubjectModalOpen && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-zinc-950 border border-emerald-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative">
+                  <h3 className="text-lg font-bold mb-4 text-white">Add New Subject</h3>
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <Label className="text-zinc-300">Subject ID (e.g., java, os)</Label>
+                      <Input value={newSub.id} onChange={(e)=>setNewSub({...newSub, id: e.target.value})} className="bg-black border-white/10 mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-zinc-300">Full Name (e.g., Java Programming)</Label>
+                      <Input value={newSub.name} onChange={(e)=>setNewSub({...newSub, name: e.target.value})} className="bg-black border-white/10 mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-zinc-300">Emoji Icon (e.g., ☕, 💻)</Label>
+                      <Input value={newSub.icon} onChange={(e)=>setNewSub({...newSub, icon: e.target.value})} maxLength={2} className="bg-black border-white/10 mt-1" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={() => setIsSubjectModalOpen(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white">Cancel</Button>
+                    <Button type="button" onClick={handleAddSubject} disabled={isSubjectAdding} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
+                      {isSubjectAdding ? "Adding..." : "Add"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleDigitalNotePublish} className="space-y-6">
               
-              {/* Paper Type (Pehle Select Karwayein) */}
+              {/* 🔥 MISSING PIECE 2: SELECT SUBJECT DROPDOWN 🔥 */}
               <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/10 space-y-4">
-                <h4 className="text-emerald-400 font-bold mb-2">1. Select Target Syllabus</h4>
+                <div className="space-y-2 relative">
+                  <Label className="text-emerald-400 font-bold mb-2 block">1. Select Subject Category</Label>
+                  <div className="flex gap-2">
+                    <select 
+                      name="subject_id" required disabled={isDigitalNotePending} 
+                      className="flex-1 bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value="">-- Choose Subject --</option>
+                      {subjects.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+                    </select>
+                    <Button type="button" onClick={() => setIsSubjectModalOpen(true)} className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 h-11 px-4 rounded-xl shrink-0">
+                      + Add Subject
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Paper Type & Unit */}
+              <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/10 space-y-4">
+                <h4 className="text-emerald-400 font-bold mb-2">2. Select Target Syllabus</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-zinc-300">UGC NET Paper</Label>
@@ -645,99 +709,203 @@ export default function PublishTab() {
         )}
 
         {/* --- FORM C: QUESTION BANK --- */}
+       {/* FORM C: QUESTION BANK */}
         {noteMode === 'questions' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <form className="space-y-6" onSubmit={(e) => {
-                e.preventDefault();
-                // Yahan par Supabase 'question_bank' table mein insert karne ka logic aayega
-                console.log("Submitting Question:", questionData);
-            }}>
-              
-              {/* Target Syllabus */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-zinc-300">UGC NET Paper</Label>
-                  <select 
-                    value={questionData.paper_type} 
-                    onChange={(e) => setQuestionData({...questionData, paper_type: e.target.value})}
-                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3"
-                  >
-                    <option value="paper1">Paper 1 (General)</option>
-                    <option value="paper2">Paper 2 (Computer Science)</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-zinc-300">Select Unit</Label>
-                  <select 
-                    value={questionData.unit_number} 
-                    onChange={(e) => setQuestionData({...questionData, unit_number: e.target.value})}
-                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(unit => (
-                      <option key={unit} value={`unit${unit}`}>Unit {unit}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+          <div className="space-y-6 animate-in fade-in duration-300">
+            
+            {/* Toggle Buttons: Single vs Bulk */}
+            <div className="flex bg-zinc-900/80 border border-white/10 rounded-xl p-1.5 w-full">
+              <button 
+                type="button" 
+                onClick={() => setQuestionUploadType('single')} 
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm rounded-lg font-bold transition-all ${questionUploadType === 'single' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              >
+                📝 Single Question Upload
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setQuestionUploadType('bulk')} 
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm rounded-lg font-bold transition-all ${questionUploadType === 'bulk' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              >
+                ⚡ Bulk Upload (CSV / JSON)
+              </button>
+            </div>
 
-              {/* Main Question */}
-              <div className="space-y-2">
-                <Label className="text-zinc-300">Question Text</Label>
-                <textarea 
-                  required 
-                  value={questionData.question}
-                  onChange={(e) => setQuestionData({...questionData, question: e.target.value})}
-                  placeholder="Type the MCQ question here..." 
-                  className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-zinc-200" 
-                />
-              </div>
+            {/* 1. SINGLE UPLOAD FORM */}
+            {questionUploadType === 'single' && (
+              <form className="space-y-6 animate-in fade-in duration-200" onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsQuestionPending(true);
 
-              {/* 4 Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {['A', 'B', 'C', 'D'].map((opt) => (
-                  <div key={opt} className="space-y-2">
-                    <Label className="text-zinc-400">Option {opt}</Label>
-                    <Input 
-                      required 
-                      value={(questionData as any)[`opt${opt}`]}
-                      onChange={(e) => setQuestionData({...questionData, [`opt${opt}`]: e.target.value})}
-                      placeholder={`Value for Option ${opt}`} 
-                      className="bg-black/50 border-white/10 text-white rounded-xl" 
-                    />
+                  const result = await createQuestionAction(questionData);
+                  if (result?.error) {
+                    toast.error(result.error);
+                  } else {
+                    toast.success("Question Saved Successfully! 🎉");
+                    setQuestionData({
+                      paper_type: 'paper1',
+                      unit_number: 'unit1',
+                      question: '',
+                      opta: '', optb: '', optc: '', optd: '',
+                      correct_answer: 'A',
+                      explanation: ''
+                    });
+                    router.refresh();
+                  }
+                  setIsQuestionPending(false);
+              }}>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Paper Type</Label>
+                    <select 
+                      value={questionData.paper_type} 
+                      onChange={(e) => setQuestionData({...questionData, paper_type: e.target.value})}
+                      className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3"
+                    >
+                      <option value="paper1">Paper 1 (General)</option>
+                      <option value="paper2">Paper 2 (Computer Science)</option>
+                    </select>
                   </div>
-                ))}
-              </div>
-
-              {/* Correct Answer & Explanation */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2 md:col-span-1">
-                  <Label className="text-emerald-400 font-bold">Correct Option</Label>
-                  <select 
-                    value={questionData.correct_answer}
-                    onChange={(e) => setQuestionData({...questionData, correct_answer: e.target.value})}
-                    className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold h-11 rounded-xl px-3"
-                  >
-                    <option value="A">Option A</option>
-                    <option value="B">Option B</option>
-                    <option value="C">Option C</option>
-                    <option value="D">Option D</option>
-                  </select>
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Unit Number</Label>
+                    <select 
+                      value={questionData.unit_number} 
+                      onChange={(e) => setQuestionData({...questionData, unit_number: e.target.value})}
+                      className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(u => <option key={u} value={`unit${u}`}>Unit {u}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-2 md:col-span-3">
-                  <Label className="text-zinc-300">Explanation (Optional but Recommended)</Label>
-                  <Input 
-                    value={questionData.explanation}
-                    onChange={(e) => setQuestionData({...questionData, explanation: e.target.value})}
-                    placeholder="Why is this answer correct? (Helps students understand)" 
-                    className="bg-black/50 border-white/10 text-white h-11 rounded-xl" 
+
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Question Text</Label>
+                  <textarea 
+                    required 
+                    value={questionData.question}
+                    onChange={(e) => setQuestionData({...questionData, question: e.target.value})}
+                    placeholder="Type MCQ question..." 
+                    className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-zinc-200" 
                   />
                 </div>
-              </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white h-11 rounded-xl mt-4">
-                Save Question
-              </Button>
-            </form>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: 'opta', label: 'A' },
+                    { key: 'optb', label: 'B' },
+                    { key: 'optc', label: 'C' },
+                    { key: 'optd', label: 'D' }
+                  ].map((opt) => (
+                    <div key={opt.key} className="space-y-2">
+                      <Label className="text-zinc-400">Option {opt.label}</Label>
+                      <Input 
+                        required 
+                        value={(questionData as any)[opt.key]}
+                        onChange={(e) => setQuestionData({...questionData, [opt.key]: e.target.value})}
+                        placeholder={`Option ${opt.label}`} 
+                        className="bg-black/50 border-white/10 text-white rounded-xl" 
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2 md:col-span-1">
+                    <Label className="text-emerald-400 font-bold">Correct Option</Label>
+                    <select 
+                      value={questionData.correct_answer}
+                      onChange={(e) => setQuestionData({...questionData, correct_answer: e.target.value})}
+                      className="w-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold h-11 rounded-xl px-3"
+                    >
+                      <option value="A">Option A</option>
+                      <option value="B">Option B</option>
+                      <option value="C">Option C</option>
+                      <option value="D">Option D</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label className="text-zinc-300">Explanation</Label>
+                    <Input 
+                      value={questionData.explanation}
+                      onChange={(e) => setQuestionData({...questionData, explanation: e.target.value})}
+                      placeholder="Why is this correct?" 
+                      className="bg-black/50 border-white/10 text-white h-11 rounded-xl" 
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={isQuestionPending} className="w-full bg-blue-600 hover:bg-blue-500 text-white h-11 rounded-xl mt-4">
+                  {isQuestionPending ? <><Loader2 className="animate-spin w-4 h-4 mr-2"/> Saving...</> : "Save Question"}
+                </Button>
+              </form>
+            )}
+
+            {/* 2. BULK UPLOAD SECTION */}
+            {questionUploadType === 'bulk' && (
+              <div className="p-8 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-6 animate-in fade-in duration-200">
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-400">⚡ Bulk Upload Questions</h3>
+                  <p className="text-xs text-zinc-400 mt-1">Apni CSV ya JSON file select karein jisme saare questions ek sath hon.</p>
+                </div>
+
+                <div className="relative w-full h-32 rounded-2xl border border-dashed border-emerald-500/40 bg-black/50 flex flex-col items-center justify-center px-4 cursor-pointer hover:border-emerald-500 transition-all group">
+                  <input 
+                    type="file" 
+                    accept=".csv, .json"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      const text = await file.text();
+                      let parsedData: any[] = [];
+
+                      try {
+                        if (file.name.endsWith('.json')) {
+                          parsedData = JSON.parse(text);
+                        } else if (file.name.endsWith('.csv')) {
+                          const lines = text.split('\n');
+                          const headers = lines[0].split(',').map(h => h.trim());
+                          
+                          for (let i = 1; i < lines.length; i++) {
+                            if (!lines[i].trim()) continue;
+                            const currentLine = lines[i].split(',');
+                            const obj: any = {};
+                            headers.forEach((header, index) => {
+                              obj[header] = currentLine[index]?.trim() || '';
+                            });
+                            parsedData.push(obj);
+                          }
+                        }
+
+                        if (parsedData.length === 0) {
+                          toast.error("File is empty or formatted incorrectly!");
+                          return;
+                        }
+
+                        const toastId = toast.loading(`Uploading ${parsedData.length} questions...`);
+                        
+                        const result = await createBulkQuestionsAction(parsedData);
+                        
+                        if (result?.error) {
+                          toast.error(result.error, { id: toastId });
+                        } else {
+                          toast.success(`Successfully uploaded ${parsedData.length} questions! 🎉`, { id: toastId });
+                          router.refresh();
+                        }
+                      } catch (err: any) {
+                        toast.error("Parsing failed: " + err.message);
+                      }
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                  />
+                  <UploadCloud className="w-8 h-8 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm text-zinc-200 font-semibold">Click to browse or drop CSV / JSON file</span>
+                  <span className="text-xs text-zinc-500 mt-1">Supports columns: paper_type, unit_number, question, opta, optb, optc, optd, correct_answer</span>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
       </div>
