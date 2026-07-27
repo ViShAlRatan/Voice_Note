@@ -39,9 +39,22 @@ export default function PublishTab() {
   // 🔴 INPUT KEYS
   const [inputKeys, setInputKeys] = useState({ logo: Date.now(), screenshots: Date.now()+1, apk: Date.now()+2, note: Date.now()+3 });
 
-  // 🔥 NEW: APK UPLOAD MODE & NOTES MODE 🔥
+  // 🔥 ALL MODES & STATES (Now properly inside the component) 🔥
   const [apkMode, setApkMode] = useState<'upload' | 'link'>('upload');
-  const [noteMode, setNoteMode] = useState<'handwritten' | 'digital'>('handwritten');
+  const [noteMode, setNoteMode] = useState<'handwritten' | 'digital' | 'questions'>('digital');
+  
+  // Digital Notes ke Multi-pages ke liye state
+  const [topicPages, setTopicPages] = useState<string[]>(['']); 
+
+  // Question Bank ke form ke liye state
+  const [questionData, setQuestionData] = useState({
+    paper_type: 'paper1',
+    unit_number: 'unit1',
+    question: '',
+    optA: '', optB: '', optC: '', optD: '',
+    correct_answer: 'A',
+    explanation: ''
+  });
 
   const [externalApkUrl, setExternalApkUrl] = useState("");
   const [externalApkSize, setExternalApkSize] = useState("");
@@ -75,14 +88,13 @@ export default function PublishTab() {
   const [uploadedScreenshotUrls, setUploadedScreenshotUrls] = useState<string[]>([]);
 
   // ==========================================
-  // 🔥 FIXED: MISSING STATES & LOGIC FOR DIGITAL SUBJECTS 🔥
+  // 🔥 SUBJECTS 🔥
   // ==========================================
   const [subjects, setSubjects] = useState<any[]>([]);
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isSubjectAdding, setIsSubjectAdding] = useState(false);
   const [newSub, setNewSub] = useState({ id: "", name: "", icon: "" });
 
-  // Fetch subjects for dropdown on component mount
   useEffect(() => {
     const fetchSubjects = async () => {
       const { data } = await supabase.from('digital_subjects').select('*');
@@ -91,7 +103,6 @@ export default function PublishTab() {
     fetchSubjects();
   }, [supabase]);
 
-  // Handle adding new subject
   const handleAddSubject = async () => {
     if (!newSub.id || !newSub.name) {
       toast.error("Subject ID and Name are required.");
@@ -106,7 +117,6 @@ export default function PublishTab() {
         toast.success(result.message || "Subject added successfully!");
         setIsSubjectModalOpen(false);
         setNewSub({ id: "", name: "", icon: "" });
-        // Refresh dropdown list dynamically
         const { data } = await supabase.from('digital_subjects').select('*');
         if (data) setSubjects(data);
         router.refresh();
@@ -232,7 +242,7 @@ export default function PublishTab() {
   };
 
   // ==========================================
-  //           CANCEL HANDLERS
+  //          CANCEL HANDLERS
   // ==========================================
   
   const handleLogoCancel = (e: React.MouseEvent) => {
@@ -361,11 +371,13 @@ export default function PublishTab() {
     setIsDigitalNotePending(true);
     
     startTransition(async () => {
+      // Yahan abhi temporary array bhej rahe hain actions file mein update karna hoga backend logic ke liye
       const result = await createDigitalNoteAction(new FormData(form));
       if (result?.error) toast.error(result.error);
       else { 
         toast.success(result.message || "Digital Topic Published!"); 
         form.reset(); 
+        setTopicPages(['']); // reset pages
         router.refresh(); 
       }
       setIsDigitalNotePending(false);
@@ -488,26 +500,31 @@ export default function PublishTab() {
         </form>
       </div>
 
-      {/* 2. NOTES PUBLISH ( SMART TOGGLE: HANDWRITTEN VS DIGITAL) */}
+      {/* 2. NOTES PUBLISH ( SMART TOGGLE: HANDWRITTEN VS DIGITAL VS QUESTIONS) */}
       <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              {noteMode === 'handwritten' ? <PenTool className="w-5 h-5" /> : <MonitorSmartphone className="w-5 h-5" />}
+              {noteMode === 'handwritten' ? <PenTool className="w-5 h-5" /> : noteMode === 'digital' ? <MonitorSmartphone className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
             </div>
             <div>
               <h2 className="text-xl font-semibold">Publish Notes</h2>
-              <p className="text-xs text-zinc-400">{noteMode === 'handwritten' ? 'Upload PDF Documents' : 'Write Digital Content (GFG Style)'}</p>
+              <p className="text-xs text-zinc-400">
+                {noteMode === 'handwritten' ? 'Upload PDF Documents' : noteMode === 'digital' ? 'Write Digital Content (GFG Style)' : 'Add MCQs to Question Bank'}
+              </p>
             </div>
           </div>
 
-          {/* Toggle Button */}
+          {/* 🔥 3 Tabs Toggle Button 🔥 */}
           <div className="flex bg-zinc-900/80 border border-white/10 rounded-xl p-1 w-full md:w-max shrink-0">
-            <button type="button" onClick={() => setNoteMode('digital')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'digital' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+            <button type="button" onClick={() => setNoteMode('digital')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'digital' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
               <MonitorSmartphone className="w-4 h-4" /> Digital Content
             </button>
-            <button type="button" onClick={() => setNoteMode('handwritten')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'handwritten' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
-              <PenTool className="w-4 h-4" /> Handwritten PDF
+            <button type="button" onClick={() => setNoteMode('handwritten')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'handwritten' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+              <PenTool className="w-4 h-4" /> Handwritten
+            </button>
+            <button type="button" onClick={() => setNoteMode('questions')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'questions' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+              <BookOpen className="w-4 h-4" /> Questions
             </button>
           </div>
         </div>
@@ -542,69 +559,109 @@ export default function PublishTab() {
         )}
 
         {/* --- FORM B: DIGITAL NOTES (HTML/MARKDOWN) --- */}
-       {noteMode === 'digital' && (
+        {noteMode === 'digital' && (
           <div className="space-y-4 animate-in fade-in duration-300">
-            {/* ADD NEW SUBJECT MODAL */}
-            {isSubjectModalOpen && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-zinc-950 border border-emerald-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative">
-                  <h3 className="text-lg font-bold mb-4 text-white">Add New Subject</h3>
-                  <div className="space-y-4 mb-6">
-                    <div>
-                      <Label className="text-zinc-300">Subject ID (e.g., java, os)</Label>
-                      <Input value={newSub.id} onChange={(e)=>setNewSub({...newSub, id: e.target.value})} className="bg-black border-white/10 mt-1" />
-                    </div>
-                    <div>
-                      <Label className="text-zinc-300">Full Name (e.g., Java Programming)</Label>
-                      <Input value={newSub.name} onChange={(e)=>setNewSub({...newSub, name: e.target.value})} className="bg-black border-white/10 mt-1" />
-                    </div>
-                    <div>
-                      <Label className="text-zinc-300">Emoji Icon (e.g., ☕, 💻)</Label>
-                      <Input value={newSub.icon} onChange={(e)=>setNewSub({...newSub, icon: e.target.value})} maxLength={2} className="bg-black border-white/10 mt-1" />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button type="button" onClick={() => setIsSubjectModalOpen(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white">Cancel</Button>
-                    <Button type="button" onClick={handleAddSubject} disabled={isSubjectAdding} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
-                      {isSubjectAdding ? "Adding..." : "Add"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleDigitalNotePublish} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div className="space-y-2 relative">
-                  <Label className="text-zinc-300">Select Subject</Label>
-                  <div className="flex gap-2">
-                    <select 
-                      name="subject_id" required disabled={isDigitalNotePending} 
-                      className="flex-1 bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    >
-                      <option value="">-- Choose Subject --</option>
-                      {subjects.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
-                    </select>
-                    <Button type="button" onClick={() => setIsSubjectModalOpen(true)} className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 h-11 px-4 rounded-xl">
-                      + Add
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-zinc-300">Topic Title</Label>
-                  <Input name="title" required disabled={isDigitalNotePending} placeholder="e.g. Relational Algebra Basics" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
-                </div>
-              </div>
+            <form onSubmit={handleDigitalNotePublish} className="space-y-6">
               
-              {/* 🔥 NEW PAPER TYPE & UNIT SELECTORS 🔥 */}
+              {/* Paper Type (Pehle Select Karwayein) */}
+              <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/10 space-y-4">
+                <h4 className="text-emerald-400 font-bold mb-2">1. Select Target Syllabus</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">UGC NET Paper</Label>
+                    <select name="paper_type" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3">
+                      <option value="">-- Select Paper --</option>
+                      <option value="paper1">Paper 1 (General)</option>
+                      <option value="paper2">Paper 2 (Computer Science)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Select Unit</Label>
+                    <select name="unit_number" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3">
+                      <option value="">-- Select Unit --</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(unit => (
+                        <option key={unit} value={`unit${unit}`}>Unit {unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Topic Basic Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Topic Title</Label>
+                  <Input name="title" required placeholder="e.g. Relational Algebra Basics" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Read Time</Label>
+                  <Input name="read_time" required placeholder="e.g. 10 min" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                </div>
+              </div>
+
+              {/* 🚀 MULTI-PAGE CONTENT SECTION 🚀 */}
+              <div className="space-y-4">
+                <Label className="text-zinc-300">Topic Pages Content</Label>
+                
+                {topicPages.map((page, index) => (
+                  <div key={index} className="relative bg-zinc-950 p-4 rounded-xl border border-white/10">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-emerald-500 font-bold text-sm">Page {index + 1}</span>
+                      {topicPages.length > 1 && (
+                        <button type="button" onClick={() => setTopicPages(topicPages.filter((_, i) => i !== index))} className="text-red-400 text-xs hover:underline">
+                          Remove Page
+                        </button>
+                      )}
+                    </div>
+                    <textarea 
+                      value={page}
+                      required
+                      onChange={(e) => {
+                        const newPages = [...topicPages];
+                        newPages[index] = e.target.value;
+                        setTopicPages(newPages);
+                      }}
+                      placeholder={`Write content for Page ${index + 1} here...`} 
+                      className="flex min-h-[150px] w-full rounded-xl border border-white/5 bg-black/50 px-4 py-3 text-sm text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500" 
+                    />
+                  </div>
+                ))}
+                
+                {/* Dynamic Add Page Button */}
+                <Button 
+                  type="button" 
+                  onClick={() => setTopicPages([...topicPages, ''])} 
+                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-white border border-dashed border-white/20 h-11 rounded-xl"
+                >
+                  + Add New Page
+                </Button>
+              </div>
+
+              <Button type="submit" disabled={isDigitalNotePending} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-11 rounded-xl mt-4">
+                {isDigitalNotePending ? "Publishing..." : "Publish Digital Topic"}
+              </Button>
+            </form>
+          </div>
+        )}
+
+        {/* --- FORM C: QUESTION BANK --- */}
+        {noteMode === 'questions' && (
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <form className="space-y-6" onSubmit={(e) => {
+                e.preventDefault();
+                // Yahan par Supabase 'question_bank' table mein insert karne ka logic aayega
+                console.log("Submitting Question:", questionData);
+            }}>
+              
+              {/* Target Syllabus */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-zinc-300">UGC NET Paper</Label>
                   <select 
-                    name="paper_type" required disabled={isDigitalNotePending} 
-                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    value={questionData.paper_type} 
+                    onChange={(e) => setQuestionData({...questionData, paper_type: e.target.value})}
+                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3"
                   >
-                    <option value="">-- Select Paper --</option>
                     <option value="paper1">Paper 1 (General)</option>
                     <option value="paper2">Paper 2 (Computer Science)</option>
                   </select>
@@ -612,36 +669,73 @@ export default function PublishTab() {
                 <div className="space-y-2">
                   <Label className="text-zinc-300">Select Unit</Label>
                   <select 
-                    name="unit_number" required disabled={isDigitalNotePending} 
-                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    value={questionData.unit_number} 
+                    onChange={(e) => setQuestionData({...questionData, unit_number: e.target.value})}
+                    className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3"
                   >
-                    <option value="">-- Select Unit --</option>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(unit => (
                       <option key={unit} value={`unit${unit}`}>Unit {unit}</option>
                     ))}
                   </select>
                 </div>
               </div>
-              {/* 🔥 END NEW SECTION 🔥 */}
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2 md:col-span-3">
-                  <Label className="text-zinc-300">Short Description</Label>
-                  <Input name="description" required disabled={isDigitalNotePending} placeholder="Brief summary of this topic..." className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
-                </div>
-                <div className="space-y-2 md:col-span-1">
-                  <Label className="text-zinc-300">Read Time</Label>
-                  <Input name="read_time" required disabled={isDigitalNotePending} placeholder="e.g. 10 min" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
-                </div>
-              </div>
-
+              {/* Main Question */}
               <div className="space-y-2">
-                <Label className="text-zinc-300">Digital Content (Markdown / HTML)</Label>
-                <textarea name="content" required disabled={isDigitalNotePending} placeholder="Write your full structured topic here..." className="flex min-h-[220px] w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 leading-relaxed resize-y" />
+                <Label className="text-zinc-300">Question Text</Label>
+                <textarea 
+                  required 
+                  value={questionData.question}
+                  onChange={(e) => setQuestionData({...questionData, question: e.target.value})}
+                  placeholder="Type the MCQ question here..." 
+                  className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-zinc-200" 
+                />
               </div>
 
-              <Button type="submit" disabled={isDigitalNotePending} className="w-full bg-blue-50 text-black hover:bg-gray-300 h-11 rounded-xl mt-4 shadow-lg shadow-emerald-500/20">
-                {isDigitalNotePending ? <><Loader2 className="animate-spin w-4 h-4 mr-2"/> Saving Topic...</> : "Publish Digital Topic"}
+              {/* 4 Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {['A', 'B', 'C', 'D'].map((opt) => (
+                  <div key={opt} className="space-y-2">
+                    <Label className="text-zinc-400">Option {opt}</Label>
+                    <Input 
+                      required 
+                      value={(questionData as any)[`opt${opt}`]}
+                      onChange={(e) => setQuestionData({...questionData, [`opt${opt}`]: e.target.value})}
+                      placeholder={`Value for Option ${opt}`} 
+                      className="bg-black/50 border-white/10 text-white rounded-xl" 
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Correct Answer & Explanation */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label className="text-emerald-400 font-bold">Correct Option</Label>
+                  <select 
+                    value={questionData.correct_answer}
+                    onChange={(e) => setQuestionData({...questionData, correct_answer: e.target.value})}
+                    className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold h-11 rounded-xl px-3"
+                  >
+                    <option value="A">Option A</option>
+                    <option value="B">Option B</option>
+                    <option value="C">Option C</option>
+                    <option value="D">Option D</option>
+                  </select>
+                </div>
+                <div className="space-y-2 md:col-span-3">
+                  <Label className="text-zinc-300">Explanation (Optional but Recommended)</Label>
+                  <Input 
+                    value={questionData.explanation}
+                    onChange={(e) => setQuestionData({...questionData, explanation: e.target.value})}
+                    placeholder="Why is this answer correct? (Helps students understand)" 
+                    className="bg-black/50 border-white/10 text-white h-11 rounded-xl" 
+                  />
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white h-11 rounded-xl mt-4">
+                Save Question
               </Button>
             </form>
           </div>

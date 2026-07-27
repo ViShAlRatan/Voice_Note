@@ -74,6 +74,10 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         <Link href="?view=handwritten" scroll={false} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${activeView === "handwritten" ? "bg-white text-black border-white shadow-xl scale-105" : "bg-zinc-900/50 text-zinc-400 border-white/10"}`}>
           <PenTool className="w-4 h-4" /> Handwritten Notes
         </Link>
+        {/* 🔥 NEW: QUESTION BANK BUTTON 🔥 */}
+        <Link href="?view=questions" scroll={false} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${activeView === "questions" ? "bg-white text-black border-white shadow-xl scale-105" : "bg-zinc-900/50 text-zinc-400 border-white/10"}`}>
+          <BookOpen className="w-4 h-4" /> Question Bank
+        </Link>
       </div>
 
       {/* ==========================================
@@ -115,6 +119,22 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
                   {currentTopics.map((topic) => (
                     <Link href={`/digital-notes/${activeSubject}/${topic.id}`} key={topic.id} className="group bg-zinc-950/60 backdrop-blur-md border border-white/10 hover:border-emerald-500/40 p-5 rounded-3xl transition-all hover:shadow-2xl hover:shadow-emerald-500/5 flex flex-col justify-between">
                       <div>
+                        
+                        {/* 🔥 NEW: PAPER & UNIT BADGES 🔥 */}
+                        <div className="flex items-center gap-2 mb-3">
+                          {topic.paper_type && (
+                            <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-1 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                              {topic.paper_type === 'paper1' ? 'Paper 1' : 'Paper 2'}
+                            </span>
+                          )}
+                          {topic.unit_number && (
+                            <span className="bg-purple-500/10 text-purple-400 text-[10px] px-2 py-1 rounded-md border border-purple-500/20 font-bold uppercase tracking-wider">
+                              {topic.unit_number.replace('unit', 'Unit ')}
+                            </span>
+                          )}
+                        </div>
+                        {/* 🔥 END BADGES 🔥 */}
+
                         <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors mb-2">{topic.title}</h3>
                         <p className="text-sm text-zinc-400 leading-relaxed mb-6 line-clamp-2">{topic.description}</p>
                       </div>
@@ -179,6 +199,40 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
                   </a>
                 </div>
               ))}
+              {/* ==========================================
+          VIEW 3: QUESTION BANK (MCQs)
+      ========================================== */}
+      {activeView === "questions" && (
+        <div className="max-w-7xl mx-auto relative z-20 animate-in fade-in duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* PAPER 1 CARD */}
+            <div className="bg-zinc-950/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl hover:border-emerald-500/40 transition-all group hover:shadow-2xl hover:shadow-emerald-500/5">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 border border-blue-500/20 text-blue-400">
+                <BookOpen className="w-7 h-7" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Paper 1 (General)</h3>
+              <p className="text-zinc-400 mb-8 leading-relaxed">Practice MCQs for Teaching & Research Aptitude. Chapter-wise questions with detailed explanations.</p>
+              <Link href="/practice?paper=paper1" className="inline-flex items-center justify-center w-full bg-white text-black font-bold h-12 rounded-xl hover:bg-zinc-200 transition-colors">
+                Start Practice <ChevronRight className="w-4 h-4 ml-2" />
+              </Link>
+            </div>
+
+            {/* PAPER 2 CARD */}
+            <div className="bg-zinc-950/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl hover:border-emerald-500/40 transition-all group hover:shadow-2xl hover:shadow-emerald-500/5">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6 border border-purple-500/20 text-purple-400">
+                <BookOpen className="w-7 h-7" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Paper 2 (Computer Science)</h3>
+              <p className="text-zinc-400 mb-8 leading-relaxed">Master Computer Science with 10 Units of topic-wise MCQs. Test your knowledge now.</p>
+              <Link href="/practice?paper=paper2" className="inline-flex items-center justify-center w-full bg-white text-black font-bold h-12 rounded-xl hover:bg-zinc-200 transition-colors">
+                Start Practice <ChevronRight className="w-4 h-4 ml-2" />
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      )}
             </div>
           )}
         </div>
