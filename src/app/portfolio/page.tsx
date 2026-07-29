@@ -106,7 +106,7 @@ export default function Portfolio() {
   const qualificationsData = [
     { id: "01", type: "Master's Degree", title: "MCA", inst: "Sardar Patel University Mandi (H.P)", year: "2025", score: "8.3 CGPA", color: "from-blue-500 to-blue-300", shadow: "shadow-blue-500/20" },
     { id: "02", type: "Bachelor's Degree", title: "BCA", inst: "College Name", year: "2023", score: "7.89 CGPA", color: "from-teal-500 to-teal-300", shadow: "shadow-teal-500/20" },
-    { id: "03", type: "Higher Secondary", title: "12th Standard (Science/PCM)", inst: "Govt Sr. Sec School Bharari", year: "2018", score: "71.2%", color: "from-emerald-500 to-emerald-300", shadow: "shadow-emerald-500/20" },
+    { id: "03", type: "Higher Secondary", title: "12th Standard (Science/PCB)", inst: "Govt Sr. Sec School Bharari", year: "2018", score: "71.2%", color: "from-emerald-500 to-emerald-300", shadow: "shadow-emerald-500/20" },
     { id: "04", type: "High School", title: "10th Standard", inst: "Govt Sr. Sec School Dumehar", year: "2016", score: "78.7%", color: "from-gray-400 to-gray-200", shadow: "shadow-gray-500/20" }
   ];
 

@@ -6,6 +6,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 //for inspect on off
 import DisableInspect from './DisableInspect';
 import MaintenanceWrapper from './MaintenanceWrapper';
+import OnlineTracker from "@/components/ui/OnlineTracker";
+
+
 // 1. Toaster component import kiya
 import { Toaster } from "@/components/ui/sonner";
 
@@ -46,8 +49,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         
         {/* Right Click aur F12 Inspect ko disable karne ke liye */}
         <DisableInspect />
+       
 
         <MaintenanceWrapper>
+           <OnlineTracker />
           {children}
         </MaintenanceWrapper>
 

@@ -9,6 +9,7 @@ import {
   HelpCircle, Map, Code, MessageCircle, Briefcase, Menu, X, ChevronDown, Smartphone,
   Heart
 } from "lucide-react";
+import { Users } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -151,6 +152,25 @@ export default function HomePage() {
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
   };
+
+  const [visitors, setVisitors] = useState<number>(0);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function trackVisitor() {
+      const supabase = createClient();
+      
+      // LocalStorage check karein taaki ek hi user baar-baar refresh kare toh count na badhe
+      const hasVisited = localStorage.getItem('has_visited');
+      
+      if (!hasVisited) {
+        // Visitor count ko +1 karna database mein
+        await supabase.rpc('increment_visitor'); 
+        localStorage.setItem('has_visited', 'true');
+      }
+    }
+    trackVisitor();
+  }, []);
 
   // --- LET'S LEARN TOGETHER CLICK HANDLER ---
   const handleLetsLearnClick = () => {
@@ -663,6 +683,19 @@ export default function HomePage() {
             </ul>
           </motion.div>
         </div>
+               {/* TOTAL VISITORS CARD
+<div className="bg-zinc-950/70 border border-white/10 p-4 rounded-3xl backdrop-blur-xl shadow-2xl flex items-center gap-4 group hover:border-blue-500/40 transition-all cursor-default">
+  <div className="w-4 h-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shadow-inner">
+    <Users className="w-4 h-4" />
+  </div>
+  <div>
+    <p className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Total Visitors</p>
+    <div className="flex items-baseline gap-2 mt-1">
+      <p className="text-1xl font-black text-white">{visitors.toLocaleString()}</p> 
+      <span className="text-[8px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 animate-pulse">Live</span>
+    </div>
+  </div>
+</div> */}
 
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} 
         viewport={{ once: true, amount: 0.1 }} transition={{ duration: 1, delay: 0.2 }}
@@ -676,6 +709,10 @@ export default function HomePage() {
            text-blue-200 underline">Next.js 15, Tailwind v4,</span> and <span className="font-bold
             text-blue-200 underline">Supabase.</span></p>
         </motion.div>
+
+ 
+
+
       </footer>
 
     </div>

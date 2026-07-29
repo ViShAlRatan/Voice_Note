@@ -10,6 +10,33 @@ import { createClient } from "@/lib/supabase/client";
 
 type AllowedTables = "apps" | "notes" | "blogs" | "messages" | "digital_topics" | "question_bank";
 
+// 🔥 STATIC UNITS FROM OFFICIAL PDF SYLLABUS 🔥
+const PAPER1_UNITS = [
+  { id: 'unit1', name: 'Teaching Aptitude' },
+  { id: 'unit2', name: 'Research Aptitude' },
+  { id: 'unit3', name: 'Comprehension' },
+  { id: 'unit4', name: 'Communication' },
+  { id: 'unit5', name: 'Mathematical Reasoning and Aptitude' },
+  { id: 'unit6', name: 'Logical Reasoning' },
+  { id: 'unit7', name: 'Data Interpretation' },
+  { id: 'unit8', name: 'Information and Communication Technology (ICT)' },
+  { id: 'unit9', name: 'People, Development and Environment' },
+  { id: 'unit10', name: 'Higher Education System' }
+];
+
+const PAPER2_UNITS = [
+  { id: 'unit1', name: 'Discrete Structures and Optimization' },
+  { id: 'unit2', name: 'Computer System Architecture' },
+  { id: 'unit3', name: 'Programming Languages and Computer Graphics' },
+  { id: 'unit4', name: 'Database Management Systems' },
+  { id: 'unit5', name: 'System Software and Operating System' },
+  { id: 'unit6', name: 'Software Engineering' },
+  { id: 'unit7', name: 'Data Structures and Algorithms' },
+  { id: 'unit8', name: 'Theory of Computation and Compilers' },
+  { id: 'unit9', name: 'Data Communication and Computer Networks' },
+  { id: 'unit10', name: 'Artificial Intelligence (AI)' }
+];
+
 export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
   const router = useRouter();
   const supabase = createClient();
@@ -22,7 +49,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
 
   // 🔴 Edit Digital Note States
   const [editDigitalModal, setEditDigitalModal] = useState<{ isOpen: boolean; topic: any }>({ isOpen: false, topic: null });
-  const [editForm, setEditForm] = useState({ title: '', read_time: '', pages: [''] });
+  const [editForm, setEditForm] = useState({ title: '', read_time: '', paper_type: '', unit_number: '', pages: [''] });
 
   // 🔴 Question Bank Management States
   const [qPaper, setQPaper] = useState('paper1');
@@ -91,6 +118,8 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
     setEditForm({
       title: topic.title || '',
       read_time: topic.read_time || '',
+      paper_type: topic.paper_type || 'paper1',
+      unit_number: topic.unit_number || 'unit1',
       pages: parsedPages
     });
     setEditDigitalModal({ isOpen: true, topic });
@@ -107,6 +136,8 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         .update({
           title: editForm.title,
           read_time: editForm.read_time,
+          paper_type: editForm.paper_type,
+          unit_number: editForm.unit_number,
           pages: JSON.stringify(editForm.pages)
         })
         .eq('id', editDigitalModal.topic.id);
@@ -115,10 +146,16 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         toast.error(`Update failed: ${error.message}`);
       } else {
         toast.success("Topic updated successfully!");
-        // Update Local State instantly
         setDigitalNotes(prev => prev.map(n => 
           n.id === editDigitalModal.topic.id 
-            ? { ...n, title: editForm.title, read_time: editForm.read_time, pages: JSON.stringify(editForm.pages) } 
+            ? { 
+                ...n, 
+                title: editForm.title, 
+                read_time: editForm.read_time, 
+                paper_type: editForm.paper_type, 
+                unit_number: editForm.unit_number, 
+                pages: JSON.stringify(editForm.pages) 
+              } 
             : n
         ));
         setEditDigitalModal({ isOpen: false, topic: null });
@@ -126,6 +163,10 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
       }
     });
   }
+
+  // Helper variables to determine which unit list to display
+  const activeQuestionUnits = qPaper === 'paper1' ? PAPER1_UNITS : PAPER2_UNITS;
+  const activeEditUnits = editForm.paper_type === 'paper1' ? PAPER1_UNITS : PAPER2_UNITS;
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in zoom-in-95 duration-500">
@@ -189,7 +230,8 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                         <p className="font-semibold text-white text-base">{note.title}</p>
                       </div>
                       <p className="text-xs text-zinc-400 font-mono mt-1">
-                        Section/Subject: <span className="text-emerald-400 font-medium">{note.digital_subjects?.name || note.subject_id}</span>
+                        Paper: <span className="text-blue-400 font-medium uppercase mr-2">{note.paper_type}</span>
+                        Unit: <span className="text-purple-400 font-medium uppercase">{note.unit_number}</span>
                       </p>
                     </div>
                     
@@ -235,7 +277,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         )}
       </div>
 
-      {/* 🔴 MANAGE QUESTIONS SECTION WITH DROPDOWN */}
+      {/* 🔴 MANAGE QUESTIONS SECTION WITH SMART DROPDOWN */}
       <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -250,7 +292,10 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
               <label className="text-xs text-zinc-400 font-medium">Select Paper</label>
               <select 
                 value={qPaper} 
-                onChange={(e) => setQPaper(e.target.value)} 
+                onChange={(e) => {
+                  setQPaper(e.target.value);
+                  setQUnit('unit1'); // 🔥 Reset unit when paper changes
+                }} 
                 className="w-full bg-black border border-white/10 text-white h-11 rounded-xl px-3 text-sm focus:outline-none focus:border-blue-500"
               >
                 <option value="paper1">Paper 1 (General)</option>
@@ -265,8 +310,9 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                 onChange={(e) => setQUnit(e.target.value)} 
                 className="w-full bg-black border border-white/10 text-white h-11 rounded-xl px-3 text-sm focus:outline-none focus:border-blue-500"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(u => (
-                  <option key={u} value={`unit${u}`}>Unit {u}</option>
+                {/* 🔥 DYNAMICALLY SHOWING UNIT + SUBJECT NAME 🔥 */}
+                {activeQuestionUnits.map(u => (
+                  <option key={u.id} value={u.id}>Unit {u.id.replace('unit', '')}: {u.name}</option>
                 ))}
               </select>
             </div>
@@ -335,7 +381,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         )}
       </div>
 
-      {/* 🔴 EDIT DIGITAL NOTE MODAL 🔴 */}
+      {/* 🔴 EDIT DIGITAL NOTE MODAL WITH SMART DROPDOWNS 🔴 */}
       {editDigitalModal.isOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -370,6 +416,36 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                     onChange={e => setEditForm({ ...editForm, read_time: e.target.value })} 
                     className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
                   />
+                </div>
+              </div>
+
+              {/* 🔥 SMART FIELDS: CHANGES UNITS BASED ON PAPER 🔥 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Syllabus Target (Paper)</label>
+                  <select 
+                    required
+                    value={editForm.paper_type} 
+                    onChange={e => setEditForm({ ...editForm, paper_type: e.target.value, unit_number: 'unit1' })} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="paper1">Paper 1 (General)</option>
+                    <option value="paper2">Paper 2 (Computer Science)</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Unit Number & Subject</label>
+                  <select 
+                    required
+                    value={editForm.unit_number} 
+                    onChange={e => setEditForm({ ...editForm, unit_number: e.target.value })} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500 truncate pr-8"
+                  >
+                    {/* 🔥 DYNAMICALLY SHOWING UNIT + SUBJECT NAME 🔥 */}
+                    {activeEditUnits.map(u => (
+                      <option key={u.id} value={u.id}>Unit {u.id.replace('unit', '')}: {u.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
