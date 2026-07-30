@@ -59,7 +59,9 @@ export const config = {
      * - favicon.ico (favicon file)
      * - admin (admin dashboard)
      * - maintenance (YE BAHUT ZAROORI HAI - warna 404 aayega)
+     * - sitemap.xml (SEO sitemap - Googlebot ke liye)
+     * - robots.txt (SEO robots - Googlebot ke liye)
      */
-    '/((?!_next/static|_next/image|favicon.ico|admin|maintenance).*)',
+    '/((?!_next/static|_next/image|favicon.ico|admin|maintenance|sitemap\\.xml|robots\\.txt).*)',
   ],
 };
