@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Loader2, Clock, Sparkles, ChevronLeft, ChevronRight, FileText, AlertCircle, Bug } from "lucide-react";
+import { ArrowLeft, Loader2, Clock, Sparkles, ChevronLeft, ChevronRight, FileText, AlertCircle, Bug, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DigitalTopicReaderPage() {
@@ -138,6 +138,14 @@ export default function DigitalTopicReaderPage() {
 
         {/* Title Section */}
         <div className="mb-8">
+          {/* 🔥 MAIN TOPIC BADGE ADDED HERE 🔥 */}
+          {topic.main_topic && (
+            <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest">
+              <BookOpen className="w-3.5 h-3.5" /> 
+              {topic.main_topic}
+            </div>
+          )}
+          
           <h1 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight">
             {topic.title}
           </h1>

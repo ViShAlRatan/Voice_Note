@@ -47,9 +47,9 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
   const [noteMode, setNoteMode] = useState<'handwritten' | 'digital'>('handwritten');
   const [digitalNotes, setDigitalNotes] = useState<any[]>([]);
 
-  // 🔴 Edit Digital Note States
+  // 🔴 Edit Digital Note States (ADDED main_topic)
   const [editDigitalModal, setEditDigitalModal] = useState<{ isOpen: boolean; topic: any }>({ isOpen: false, topic: null });
-  const [editForm, setEditForm] = useState({ title: '', read_time: '', paper_type: '', unit_number: '', pages: [''] });
+  const [editForm, setEditForm] = useState({ title: '', read_time: '', paper_type: '', unit_number: '', main_topic: '', pages: [''] });
 
   // 🔴 Question Bank Management States
   const [qPaper, setQPaper] = useState('paper1');
@@ -120,6 +120,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
       read_time: topic.read_time || '',
       paper_type: topic.paper_type || 'paper1',
       unit_number: topic.unit_number || 'unit1',
+      main_topic: topic.main_topic || '', // 🔥 Add Main Topic Here
       pages: parsedPages
     });
     setEditDigitalModal({ isOpen: true, topic });
@@ -138,6 +139,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
           read_time: editForm.read_time,
           paper_type: editForm.paper_type,
           unit_number: editForm.unit_number,
+          main_topic: editForm.main_topic, // 🔥 Add Main Topic Here
           pages: JSON.stringify(editForm.pages)
         })
         .eq('id', editDigitalModal.topic.id);
@@ -153,7 +155,8 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                 title: editForm.title, 
                 read_time: editForm.read_time, 
                 paper_type: editForm.paper_type, 
-                unit_number: editForm.unit_number, 
+                unit_number: editForm.unit_number,
+                main_topic: editForm.main_topic, // 🔥 Update UI State
                 pages: JSON.stringify(editForm.pages) 
               } 
             : n
@@ -381,7 +384,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         )}
       </div>
 
-      {/* 🔴 EDIT DIGITAL NOTE MODAL WITH SMART DROPDOWNS 🔴 */}
+      {/* 🔴 EDIT DIGITAL NOTE MODAL WITH SMART DROPDOWNS & MAIN TOPIC 🔴 */}
       {editDigitalModal.isOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -396,29 +399,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
             </div>
 
             <form onSubmit={handleUpdateTopic} className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">Topic Title</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={editForm.title} 
-                    onChange={e => setEditForm({ ...editForm, title: e.target.value })} 
-                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">Read Time</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={editForm.read_time} 
-                    onChange={e => setEditForm({ ...editForm, read_time: e.target.value })} 
-                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
+              
               {/* 🔥 SMART FIELDS: CHANGES UNITS BASED ON PAPER 🔥 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -446,6 +427,42 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                       <option key={u.id} value={u.id}>Unit {u.id.replace('unit', '')}: {u.name}</option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* 🔥 NEW FIELD: MAIN TOPIC 🔥 */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-300">Main Topic (Chapter Heading)</label>
+                <input 
+                  type="text" 
+                  value={editForm.main_topic} 
+                  onChange={e => setEditForm({ ...editForm, main_topic: e.target.value })} 
+                  placeholder="e.g. Mathematical Logic"
+                  className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-[10px] text-zinc-500 mt-1">Leave blank to place this note under "General Topics"</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Topic Title</label>
+                  <input 
+                    required 
+                    type="text" 
+                    value={editForm.title} 
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Read Time</label>
+                  <input 
+                    required 
+                    type="text" 
+                    value={editForm.read_time} 
+                    onChange={e => setEditForm({ ...editForm, read_time: e.target.value })} 
+                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
               </div>
 

@@ -76,6 +76,18 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
     topic.paper_type === activePaper && topic.unit_number === activeUnit
   ) || [];
 
+  // 🔥 GROUPING LOGIC FOR MAIN TOPICS 🔥
+  const groupedTopics = currentTopics.reduce((acc: any, topic: any) => {
+    // Agar admin ne main_topic nahi likha, toh usko 'General Topics' mein daal do
+    const mainHeading = topic.main_topic || "General Topics"; 
+    
+    if (!acc[mainHeading]) {
+      acc[mainHeading] = [];
+    }
+    acc[mainHeading].push(topic);
+    return acc;
+  }, {});
+
   return (
     <div className="min-h-screen bg-black text-white px-4 md:px-6 py-12 selection:bg-emerald-500/30 selection:text-white relative overflow-hidden font-sans pb-24">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-emerald-500/10 blur-[120px] pointer-events-none" />
@@ -191,32 +203,50 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
                 <span className="bg-zinc-800 text-zinc-300 text-xs px-2.5 py-1 rounded-full font-mono">{currentTopics?.length || 0} Topics</span>
               </div>
 
-              {currentTopics && currentTopics.length > 0 ? (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  {currentTopics.map((topic) => (
-                    <Link href={`/digital-notes/${activeUnit}/${topic.id}`} key={topic.id} className="group bg-zinc-950/60 backdrop-blur-md border border-white/10 hover:border-emerald-500/40 p-5 rounded-3xl transition-all hover:shadow-2xl hover:shadow-emerald-500/5 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          {topic.paper_type && (
-                            <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-1 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
-                              {topic.paper_type === 'paper1' ? 'Paper 1' : 'Paper 2'}
-                            </span>
-                          )}
-                          {topic.unit_number && (
-                            <span className="bg-purple-500/10 text-purple-400 text-[10px] px-2 py-1 rounded-md border border-purple-500/20 font-bold uppercase tracking-wider">
-                              {String(topic.unit_number).replace('unit', 'Unit ')}
-                            </span>
-                          )}
-                        </div>
+              {/* 🔥 GROUPED TOPICS DISPLAY 🔥 */}
+              {Object.keys(groupedTopics).length > 0 ? (
+                <div className="space-y-12">
+                  {Object.entries(groupedTopics).map(([mainTopic, subTopics]: any) => (
+                    <div key={mainTopic} className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                      
+                      {/* 🔥 MAIN TOPIC HEADING 🔥 */}
+                      <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                        <div className="h-8 w-1.5 rounded-full bg-emerald-500"></div>
+                        <h3 className="text-2xl font-black text-white">{mainTopic}</h3>
+                        <span className="ml-auto bg-zinc-900 text-zinc-400 text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full">
+                          {subTopics.length} Topics
+                        </span>
+                      </div>
 
-                        <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors mb-2">{topic.title}</h3>
-                        <p className="text-sm text-zinc-400 leading-relaxed mb-6 line-clamp-2">{topic.description}</p>
+                      {/* 🔥 SUB TOPICS GRID 🔥 */}
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        {subTopics.map((topic: any) => (
+                          <Link href={`/digital-notes/${activeUnit}/${topic.id}`} key={topic.id} className="group bg-zinc-950/60 backdrop-blur-md border border-white/10 hover:border-emerald-500/40 p-5 rounded-3xl transition-all hover:shadow-2xl hover:shadow-emerald-500/5 flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                {topic.paper_type && (
+                                  <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-1 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                    {topic.paper_type === 'paper1' ? 'Paper 1' : 'Paper 2'}
+                                  </span>
+                                )}
+                                {topic.unit_number && (
+                                  <span className="bg-purple-500/10 text-purple-400 text-[10px] px-2 py-1 rounded-md border border-purple-500/20 font-bold uppercase tracking-wider">
+                                    {String(topic.unit_number).replace('unit', 'Unit ')}
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors mb-2">{topic.title}</h3>
+                              <p className="text-sm text-zinc-400 leading-relaxed mb-6 line-clamp-2">{topic.description}</p>
+                            </div>
+                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
+                              <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium"><Clock className="w-3.5 h-3.5" /> {topic.read_time}</div>
+                              <div className="flex items-center text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">Read Topic <ChevronRight className="w-4 h-4 ml-1" /></div>
+                            </div>
+                          </Link>
+                        ))}
                       </div>
-                      <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium"><Clock className="w-3.5 h-3.5" /> {topic.read_time}</div>
-                        <div className="flex items-center text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">Read Topic <ChevronRight className="w-4 h-4 ml-1" /></div>
-                      </div>
-                    </Link>
+
+                    </div>
                   ))}
                 </div>
               ) : (

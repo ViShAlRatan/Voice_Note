@@ -251,7 +251,7 @@ export default function PublishTab() {
   };
 
   // ==========================================
-  //          CANCEL HANDLERS
+  //           CANCEL HANDLERS
   // ==========================================
   
   const handleLogoCancel = (e: React.MouseEvent) => {
@@ -674,15 +674,23 @@ export default function PublishTab() {
                 </div>
               </div>
 
-              {/* Topic Basic Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 🔥 ADDED: MAIN TOPIC & Basic Details 🔥 */}
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Topic Title</Label>
-                  <Input name="title" required placeholder="e.g. Relational Algebra Basics" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                  <Label className="text-zinc-300">Main Topic (Chapter Heading)</Label>
+                  <Input name="main_topic" placeholder="e.g. Mathematical Logic" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                  <p className="text-[10px] text-zinc-500 mt-1">Leave blank to place this note under "General Topics"</p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-zinc-300">Read Time</Label>
-                  <Input name="read_time" required placeholder="e.g. 10 min" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Topic Title (Sub Topic)</Label>
+                    <Input name="title" required placeholder="e.g. Relational Algebra Basics" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Read Time</Label>
+                    <Input name="read_time" required placeholder="e.g. 10 min" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                  </div>
                 </div>
               </div>
 

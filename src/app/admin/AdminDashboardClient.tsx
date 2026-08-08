@@ -21,7 +21,7 @@ export default function AdminDashboardClient({ initialApps, initialNotes, initia
   const router = useRouter();
   const supabase = createClient();
   
-  // 🔥 State mein "performances" add kiya
+  //  State mein "performances" add kiya
   const [activeTab, setActiveTab] = useState<"publish" | "manage" | "messages" | "users" | "maintenance" | "reviews" | "performances">("publish");
   const [isLoggingOut, startLogoutTransition] = useTransition();
 
@@ -151,7 +151,7 @@ export default function AdminDashboardClient({ initialApps, initialNotes, initia
             <Users className="w-4 h-4" /> User Control <span className="ml-1 px-1.5 py-0.5 rounded-full bg-indigo-500/30 text-xs font-mono">{safeProfiles.length}</span>
           </button>
 
-          {/* 🔥 Performance Button Added 🔥 */}
+          {/*  Performance Button Added  */}
           <button onClick={() => setActiveTab("performances")} className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-medium transition-all border shrink-0 ${activeTab === "performances" ? "bg-emerald-500 text-black border-emerald-400 shadow-xl shadow-emerald-500/20 scale-105 font-bold" : "bg-zinc-950/60 text-zinc-300 border-white/10 hover:bg-zinc-900 hover:text-white"}`}>
             <Trophy className="w-4 h-4" /> User Performances
           </button>
@@ -175,7 +175,7 @@ export default function AdminDashboardClient({ initialApps, initialNotes, initia
 
       {activeTab === "reviews" && <ReviewsTab />}
 
-      {/* 🔥 User Performances Tab Content 🔥 */}
+      {/*  User Performances Tab Content  */}
       {activeTab === "performances" && (
         <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
           <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
