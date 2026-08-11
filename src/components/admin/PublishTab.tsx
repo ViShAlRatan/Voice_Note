@@ -876,7 +876,32 @@ export default function PublishTab() {
               <div className="p-8 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-6 animate-in fade-in duration-200">
                 <div>
                   <h3 className="text-lg font-bold text-emerald-400">⚡ Bulk Upload Questions</h3>
-                  <p className="text-xs text-zinc-400 mt-1">Apni CSV ya JSON file select karein jisme saare questions ek sath hon.</p>
+                  <p className="text-xs text-zinc-400 mt-1">Select Paper & Unit, then upload your CSV/JSON file.</p>
+                </div>
+
+                {/* 🔥 ADDED PAPER AND UNIT DROPDOWNS HERE 🔥 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Target Paper</Label>
+                    <select 
+                      value={questionData.paper_type} 
+                      onChange={(e) => setQuestionData({...questionData, paper_type: e.target.value})}
+                      className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value="paper1">Paper 1 (General)</option>
+                      <option value="paper2">Paper 2 (Computer Science)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Target Unit</Label>
+                    <select 
+                      value={questionData.unit_number} 
+                      onChange={(e) => setQuestionData({...questionData, unit_number: e.target.value})}
+                      className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(u => <option key={u} value={`unit${u}`}>Unit {u}</option>)}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="relative w-full h-32 rounded-2xl border border-dashed border-emerald-500/40 bg-black/50 flex flex-col items-center justify-center px-4 cursor-pointer hover:border-emerald-500 transition-all group">
@@ -913,14 +938,22 @@ export default function PublishTab() {
                           return;
                         }
 
-                        const toastId = toast.loading(`Uploading ${parsedData.length} questions...`);
+                        // 🔥 INJECT PAPER & UNIT HERE 🔥
+                        const dataToUpload = parsedData.map(item => ({
+                          ...item,
+                          paper_type: questionData.paper_type,
+                          unit_number: questionData.unit_number,
+                          explanation: item.explanation || "" // Fallback string if missing in CSV
+                        }));
+
+                        const toastId = toast.loading(`Uploading ${dataToUpload.length} questions...`);
                         
-                        const result = await createBulkQuestionsAction(parsedData);
+                        const result = await createBulkQuestionsAction(dataToUpload);
                         
                         if (result?.error) {
                           toast.error(result.error, { id: toastId });
                         } else {
-                          toast.success(`Successfully uploaded ${parsedData.length} questions! 🎉`, { id: toastId });
+                          toast.success(`Successfully uploaded ${dataToUpload.length} questions! 🎉`, { id: toastId });
                           router.refresh();
                         }
                       } catch (err: any) {
@@ -931,7 +964,7 @@ export default function PublishTab() {
                   />
                   <UploadCloud className="w-8 h-8 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
                   <span className="text-sm text-zinc-200 font-semibold">Click to browse or drop CSV / JSON file</span>
-                  <span className="text-xs text-zinc-500 mt-1">Supports columns: paper_type, unit_number, question, opta, optb, optc, optd, correct_answer</span>
+                  <span className="text-xs text-zinc-500 mt-1">Supports columns: question, opta, optb, optc, optd, correct_answer, explanation</span>
                 </div>
               </div>
             )}
