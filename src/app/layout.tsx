@@ -24,9 +24,10 @@ const geistMono = Geist_Mono({
 
 
 export const metadata: Metadata = {
-  title: "Voice Note | Premium Knowledge Workspace ",
+  title: "Voice Note | Knowledge Workspace ",
   description: "Access premium digital notes, handwritten PDFs, and tech resources. The ultimate workspace for students and developers.",
-  keywords: ["engineering notes", "tech blogs", "handwritten notes", "developer workspace", "Flutter android apps."],
+  keywords: ["engineering notes", "tech blogs", "handwritten notes",
+     "developer workspace", "Flutter android apps","UGC NET Notes","CS Notes."],
 
   verification: {
     google: "Ggsz0-NigmgC8IFfaluvDJFyXY-koPU8RxIGj8tZ3ZU", 

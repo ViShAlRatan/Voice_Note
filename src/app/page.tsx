@@ -337,6 +337,7 @@ export default function HomePage() {
                   <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 text-white px-4 py-3 rounded-xl hover:bg-white/5"><Home className="w-4 h-4 text-indigo-400"/> Home</Link>
                   <Link href="/notes" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5 transition-colors text-indigo-300 flex items-center gap-3"><GraduationCap className="w-4 h-4"/> Premium Study Notes</Link>
                   <Link href="/apps" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3"><Smartphone className="w-4 h-4"/> Flutter Apps</Link>
+                  <Link href="/blog" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3"><Sparkles className="w-4 h-4"/> Blog</Link>
                   <Link href="#faq" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3"><HelpCircle className="w-4 h-4"/> FAQ</Link>
                 </nav>
                 <div className="pt-6 border-t border-white/10 flex flex-col gap-3">
