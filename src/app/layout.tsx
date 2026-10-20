@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 
 
 export const metadata: Metadata = {
-  title: "Voice Note | Knowledge Workspace ",
+  title: "Voice Note | CS Knowledge Workspace ",
   description: "Access premium digital notes, handwritten PDFs, and tech resources. The ultimate workspace for students and developers.",
   keywords: ["engineering notes", "tech blogs", "handwritten notes",
      "developer workspace", "Flutter android apps","UGC NET Notes","CS Notes."],
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 
 
   openGraph: {
-    title: "Voice Note - Knowledge Workspace",
+    title: "Voice Note -  CS Knowledge Workspace",
     description: "Your ultimate study companion and tech hub.",
     url: "https://voice-note-fawn.vercel.app/", 
     siteName: "Voice Note",
