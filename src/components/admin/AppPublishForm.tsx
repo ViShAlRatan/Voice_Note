@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createAppAction } from "@/app/actions/admin";
+import { validateFileUpload, isValidHttpsUrl } from "@/lib/security/validators";
 
 // SMART PROGRESS SIMULATOR (Local Helper)
 const startSimulatedProgress = (fileSize: number, setProgress: (val: number | null) => void) => {
@@ -34,7 +35,7 @@ export default function AppPublishForm() {
   const [isPending, startTransition] = useTransition();
 
   const isCancelledRef = useRef({ logo: false, screenshots: false, apk: false });
-  const [inputKeys, setInputKeys] = useState({ logo: Date.now(), screenshots: Date.now()+1, apk: Date.now()+2 });
+  const [inputKeys, setInputKeys] = useState({ logo: Date.now(), screenshots: Date.now() + 1, apk: Date.now() + 2 });
 
   const [apkMode, setApkMode] = useState<'upload' | 'link'>('upload');
   
@@ -59,9 +60,23 @@ export default function AppPublishForm() {
   const [uploadedLogoUrl, setUploadedLogoUrl] = useState("");
   const [uploadedScreenshotUrls, setUploadedScreenshotUrls] = useState<string[]>([]);
 
+  // 1. SECURED LOGO UPLOAD (Check #17 & #23)
   const handleLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // 🔒 Security Validation: Max 2MB, Safe Image Formats Only (No SVG XSS)
+    const check = validateFileUpload(file, {
+      maxSizeMB: 2,
+      allowedExtensions: [".png", ".jpg", ".jpeg", ".webp"],
+      allowedMimeTypes: ["image/png", "image/jpeg", "image/webp"],
+    });
+    if (!check.valid) {
+      toast.error(check.error || "Invalid logo file.");
+      setInputKeys((prev) => ({ ...prev, logo: Date.now() }));
+      return;
+    }
+
     isCancelledRef.current.logo = false;
     setAppLogo(file);
     setIsLogoUploading(true);
@@ -70,7 +85,8 @@ export default function AppPublishForm() {
     const interval = startSimulatedProgress(file.size, setLogoProgress);
 
     try {
-      const logoName = `logo-${Date.now()}.${file.name.split('.').pop()}`;
+      const safeExt = (file.name.split('.').pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const logoName = `logo-${Date.now()}.${safeExt}`;
       const { error } = await supabase.storage.from("app-images").upload(logoName, file);
       if (error) throw error;
       if (isCancelledRef.current.logo) return;
@@ -84,16 +100,37 @@ export default function AppPublishForm() {
       if (isCancelledRef.current.logo) return; 
       clearInterval(interval);
       setLogoProgress(null);
-      toast.error(`Logo upload failed: ${error.message}`, { id: toastId });
+      setAppLogo(null);
+      console.error("[Logo Upload Error]:", error);
+      toast.error("Logo upload failed. Please try a valid image.", { id: toastId });
     } finally {
       if (!isCancelledRef.current.logo) setIsLogoUploading(false);
     }
   };
 
+  // 2. SECURED SCREENSHOTS UPLOAD (Check #17 & #23)
   const handleScreenshotSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const filesArray = Array.from(e.target.files);
-    if (filesArray.length > 4) { toast.error("You can only select up to 4 screenshots."); return; }
+    if (filesArray.length > 4) {
+      toast.error("You can only select up to 4 screenshots.");
+      setInputKeys((prev) => ({ ...prev, screenshots: Date.now() }));
+      return;
+    }
+
+    // 🔒 Security Validation: Check every screenshot before uploading
+    for (const file of filesArray) {
+      const check = validateFileUpload(file, {
+        maxSizeMB: 5,
+        allowedExtensions: [".png", ".jpg", ".jpeg", ".webp"],
+        allowedMimeTypes: ["image/png", "image/jpeg", "image/webp"],
+      });
+      if (!check.valid) {
+        toast.error(`${file.name}: ${check.error}`);
+        setInputKeys((prev) => ({ ...prev, screenshots: Date.now() }));
+        return;
+      }
+    }
     
     isCancelledRef.current.screenshots = false;
     setAppScreenshots(filesArray);
@@ -108,7 +145,8 @@ export default function AppPublishForm() {
       for (let i = 0; i < filesArray.length; i++) {
         if (isCancelledRef.current.screenshots) return;
         const file = filesArray[i];
-        const shotName = `shot-${Date.now()}-${i}.${file.name.split('.').pop()}`;
+        const safeExt = (file.name.split('.').pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const shotName = `shot-${Date.now()}-${i}.${safeExt}`;
         const { error } = await supabase.storage.from("app-images").upload(shotName, file);
         if (error) throw error;
         const { data } = supabase.storage.from("app-images").getPublicUrl(shotName);
@@ -124,15 +162,30 @@ export default function AppPublishForm() {
       if (isCancelledRef.current.screenshots) return;
       clearInterval(interval);
       setScreenshotProgress(null);
-      toast.error(`Screenshot upload failed: ${error.message}`, { id: toastId });
+      setAppScreenshots([]);
+      console.error("[Screenshot Upload Error]:", error);
+      toast.error("Screenshot upload failed. Please try again.", { id: toastId });
     } finally {
       if (!isCancelledRef.current.screenshots) setIsScreenshotsUploading(false);
     }
   };
 
+  // 3. SECURED APK UPLOAD (Check #17 & #23)
   const handleApkSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // 🔒 Security Validation: Max 150MB, strictly .apk extension
+    const apkCheck = validateFileUpload(file, {
+      maxSizeMB: 150,
+      allowedExtensions: [".apk"],
+    });
+    if (!apkCheck.valid) {
+      toast.error(apkCheck.error || "Invalid APK file.");
+      setInputKeys((prev) => ({ ...prev, apk: Date.now() }));
+      return;
+    }
+
     isCancelledRef.current.apk = false;
     setAppFile(file);
     setIsApkUploading(true);
@@ -141,7 +194,9 @@ export default function AppPublishForm() {
     const toastId = toast.loading("Uploading APK File...");
     
     try {
-      const apkName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      // Sanitize filename to prevent path traversal or special char issues
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "-");
+      const apkName = `${Date.now()}-${safeFileName}`;
       const { error } = await supabase.storage.from('apps').upload(apkName, file);
       if (error) throw error;
       if (isCancelledRef.current.apk) return; 
@@ -157,7 +212,9 @@ export default function AppPublishForm() {
       if (isCancelledRef.current.apk) return;
       clearInterval(interval);
       setApkProgress(null);
-      toast.error(`APK upload failed: ${error.message}`, { id: toastId });
+      setAppFile(null);
+      console.error("[APK Upload Error]:", error);
+      toast.error("APK upload failed. Please check your connection.", { id: toastId });
     } finally {
       if (!isCancelledRef.current.apk) setIsApkUploading(false);
     }
@@ -190,13 +247,24 @@ export default function AppPublishForm() {
     setInputKeys(prev => ({ ...prev, apk: Date.now() }));
   };
 
+  // 4. SECURED FINAL PUBLISH (Check #8 & #25)
   const handleAppPublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget; 
     
     if (!uploadedLogoUrl) { toast.error("Please upload the App Logo first."); return; }
     if (apkMode === 'upload' && !uploadedAppUrl) { toast.error("Please let the APK finish uploading first."); return; }
-    if (apkMode === 'link' && (!externalApkUrl || !externalApkSize)) { toast.error("Please provide the external APK link and its size."); return; }
+    if (apkMode === 'link') {
+      if (!externalApkUrl.trim() || !externalApkSize.trim()) {
+        toast.error("Please provide the external APK link and its size.");
+        return;
+      }
+      // 🔒 Validate External URL is strictly HTTPS (blocks javascript: XSS)
+      if (!isValidHttpsUrl(externalApkUrl)) {
+        toast.error("Invalid APK URL. Must be a secure https:// link.");
+        return;
+      }
+    }
     
     setIsAppUploading(true);
     const formData = new FormData(form);
@@ -205,8 +273,8 @@ export default function AppPublishForm() {
       formData.append("download_url", uploadedAppUrl);
       if(!formData.get("file_size")) formData.append("file_size", uploadedAppSize);
     } else {
-      formData.append("download_url", externalApkUrl);
-      if(!formData.get("file_size")) formData.append("file_size", externalApkSize);
+      formData.append("download_url", externalApkUrl.trim());
+      if(!formData.get("file_size")) formData.append("file_size", externalApkSize.trim());
     }
 
     formData.append("logo_url", uploadedLogoUrl);
@@ -222,7 +290,7 @@ export default function AppPublishForm() {
         setUploadedAppUrl(""); setUploadedLogoUrl(""); setUploadedScreenshotUrls([]);
         setLogoProgress(null); setScreenshotProgress(null); setApkProgress(null);
         setExternalApkUrl(""); setExternalApkSize("");
-        setInputKeys({ logo: Date.now(), screenshots: Date.now()+1, apk: Date.now()+2 });
+        setInputKeys({ logo: Date.now(), screenshots: Date.now() + 1, apk: Date.now() + 2 });
         router.refresh(); 
       }
       setIsAppUploading(false);
@@ -240,16 +308,16 @@ export default function AppPublishForm() {
       
       <form onSubmit={handleAppPublish} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2"><Label className="text-zinc-300">App Title</Label><Input name="title" required disabled={isAppUploading} placeholder="e.g. TrueBond Chat App" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
-          <div className="space-y-2"><Label className="text-zinc-300">Version</Label><Input name="version" required disabled={isAppUploading} placeholder="e.g. 1.2.0" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+          <div className="space-y-2"><Label className="text-zinc-300">App Title</Label><Input name="title" maxLength={100} required disabled={isAppUploading} placeholder="e.g. TrueBond Chat App" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+          <div className="space-y-2"><Label className="text-zinc-300">Version</Label><Input name="version" maxLength={30} required disabled={isAppUploading} placeholder="e.g. 1.2.0" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
         </div>
-        <div className="space-y-2"><Label className="text-zinc-300">Description</Label><Input name="description" required disabled={isAppUploading} placeholder="Brief overview of features..." className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+        <div className="space-y-2"><Label className="text-zinc-300">Description</Label><Input name="description" maxLength={500} required disabled={isAppUploading} placeholder="Brief overview of features..." className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label className="text-zinc-300">App Logo</Label>
+            <Label className="text-zinc-300">App Logo (PNG, JPG, WEBP • Max 2MB)</Label>
             <div className="relative w-full h-12 rounded-xl border border-dashed border-white/20 bg-black/50 hover:bg-white/5 transition-colors flex items-center justify-between px-4 overflow-hidden">
-              <input key={inputKeys.logo} type="file" accept="image/*" onChange={handleLogoSelect} disabled={isLogoUploading || isAppUploading} className="absolute inset-0 opacity-0 cursor-pointer z-0" />
+              <input key={inputKeys.logo} type="file" accept=".png,.jpg,.jpeg,.webp" onChange={handleLogoSelect} disabled={isLogoUploading || isAppUploading} className="absolute inset-0 opacity-0 cursor-pointer z-0" />
               <div className="flex items-center gap-2 pointer-events-none text-sm text-zinc-400 z-0">
                 {isLogoUploading ? <Loader2 className="w-4 h-4 text-indigo-400 animate-spin"/> : <UploadCloud className="w-4 h-4 text-indigo-400"/>}
                 {isLogoUploading ? <span className="text-indigo-400 font-bold ml-1">Uploading... {logoProgress}%</span> : appLogo ? <span className="text-emerald-400 font-bold ml-1 truncate max-w-[150px]">{logoProgress === 100 ? `Uploaded: ${appLogo.name}` : appLogo.name}</span> : "Select App Logo"}
@@ -261,9 +329,9 @@ export default function AppPublishForm() {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-zinc-300">Screenshots (Max 4)</Label>
+            <Label className="text-zinc-300">Screenshots (Max 4 • Up to 5MB each)</Label>
             <div className="relative w-full h-12 rounded-xl border border-dashed border-white/20 bg-black/50 hover:bg-white/5 transition-colors flex items-center justify-between px-4 overflow-hidden">
-              <input key={inputKeys.screenshots} type="file" accept="image/*" multiple onChange={handleScreenshotSelect} disabled={isScreenshotsUploading || isAppUploading} className="absolute inset-0 opacity-0 cursor-pointer z-0" />
+              <input key={inputKeys.screenshots} type="file" accept=".png,.jpg,.jpeg,.webp" multiple onChange={handleScreenshotSelect} disabled={isScreenshotsUploading || isAppUploading} className="absolute inset-0 opacity-0 cursor-pointer z-0" />
               <div className="flex items-center gap-2 pointer-events-none text-sm text-zinc-400 z-0">
                 {isScreenshotsUploading ? <Loader2 className="w-4 h-4 text-indigo-400 animate-spin"/> : <UploadCloud className="w-4 h-4 text-indigo-400"/>}
                 {isScreenshotsUploading ? <span className="text-indigo-400 font-bold ml-1">Uploading... {screenshotProgress}%</span> : appScreenshots.length > 0 ? <span className="text-emerald-400 font-bold ml-1">{screenshotProgress === 100 ? `100% Uploaded` : `${appScreenshots.length} images selected`}</span> : "Select up to 4 images"}
@@ -277,7 +345,7 @@ export default function AppPublishForm() {
 
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <Label className="text-zinc-300">App File (APK)</Label>
+            <Label className="text-zinc-300">App File (APK • Max 150MB)</Label>
             <div className="flex bg-white/5 rounded-lg p-1">
               <button type="button" onClick={() => setApkMode('upload')} className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${apkMode === 'upload' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}>Upload File</button>
               <button type="button" onClick={() => setApkMode('link')} className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${apkMode === 'link' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}>Paste Link</button>
@@ -304,7 +372,7 @@ export default function AppPublishForm() {
                 <Input type="url" value={externalApkUrl} onChange={(e) => setExternalApkUrl(e.target.value)} disabled={isAppUploading} placeholder="https://drive.google.com/..." className="bg-black/50 border-white/10 text-white h-12 pl-10 rounded-xl" />
               </div>
               <div className="md:col-span-1">
-                <Input type="text" value={externalApkSize} onChange={(e) => setExternalApkSize(e.target.value)} disabled={isAppUploading} placeholder="e.g. 98 MB" className="bg-black/50 border-white/10 text-white h-12 rounded-xl" />
+                <Input type="text" maxLength={20} value={externalApkSize} onChange={(e) => setExternalApkSize(e.target.value)} disabled={isAppUploading} placeholder="e.g. 98 MB" className="bg-black/50 border-white/10 text-white h-12 rounded-xl" />
               </div>
             </div>
           )}

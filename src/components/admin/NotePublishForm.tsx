@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createNoteAction, createDigitalNoteAction, createQuestionAction, createBulkQuestionsAction } from "@/app/actions/admin";
+import { validateFileUpload, isValidHttpsUrl, sanitizeNoteHtml } from "@/lib/security/validators";
 
 interface NotePublishFormProps {
   subjects: any[];
@@ -39,7 +40,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
   const [noteMode, setNoteMode] = useState<'handwritten' | 'digital' | 'questions'>('digital');
   const [pdfMode, setPdfMode] = useState<'upload' | 'link'>('upload');
   
-  // 🔥 NEW: Digital Note Upload Type 🔥
   const [digitalUploadType, setDigitalUploadType] = useState<'single' | 'bulk'>('single');
   const [questionUploadType, setQuestionUploadType] = useState<'single' | 'bulk'>('single');
 
@@ -57,19 +57,44 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
   });
   const [isQuestionPending, setIsQuestionPending] = useState(false);
 
-  // 1. HANDWRITTEN PUBLISH
+  // 1. SECURED HANDWRITTEN PUBLISH (Check #17 & #23)
   const handleNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget; 
-    if (pdfMode === 'upload' && !noteFile) { toast.error("Please select a PDF file to upload."); return; }
-    if (pdfMode === 'link' && !externalPdfUrl) { toast.error("Please paste the Google Drive link."); return; }
+
+    if (pdfMode === 'upload') {
+      if (!noteFile) { toast.error("Please select a PDF file to upload."); return; }
+      
+      // 🔒 Security Validation: Max 50MB, strictly .pdf
+      const pdfCheck = validateFileUpload(noteFile, {
+        maxSizeMB: 50,
+        allowedExtensions: [".pdf"],
+        allowedMimeTypes: ["application/pdf"],
+      });
+      if (!pdfCheck.valid) {
+        toast.error(pdfCheck.error || "Invalid PDF file.");
+        setInputKey(Date.now());
+        return;
+      }
+    }
+
+    if (pdfMode === 'link') {
+      if (!externalPdfUrl.trim()) { toast.error("Please paste the Google Drive link."); return; }
+      // 🔒 Validate External Link is HTTPS
+      if (!isValidHttpsUrl(externalPdfUrl)) {
+        toast.error("Invalid PDF URL. Must be a secure https:// link.");
+        return;
+      }
+    }
     
     setIsNoteUploading(true);
     const formData = new FormData(form);
 
     if (pdfMode === 'upload') {
       const interval = startSimulatedProgress(noteFile!.size, setNoteProgress);
-      const fileName = `${Date.now()}-${noteFile!.name.replace(/\s+/g, '-')}`;
+      // Sanitize filename
+      const safeName = noteFile!.name.replace(/[^a-zA-Z0-9.-]/g, "-");
+      const fileName = `${Date.now()}-${safeName}`;
       try {
         const { error: uploadError } = await supabase.storage.from('notes').upload(fileName, noteFile!);
         if (uploadError) throw uploadError;
@@ -79,11 +104,14 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
         setNoteProgress(100);
       } catch (error) {
         clearInterval(interval);
-        setNoteProgress(null); setIsNoteUploading(false);
-        toast.error("File upload failed!"); return;
+        setNoteProgress(null); 
+        setIsNoteUploading(false);
+        console.error("[PDF Upload Error]:", error);
+        toast.error("File upload failed. Please try again."); 
+        return;
       }
     } else {
-      formData.append("file_url", externalPdfUrl);
+      formData.append("file_url", externalPdfUrl.trim());
     }
 
     startTransition(async () => {
@@ -98,7 +126,7 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
     });
   };
 
-  // 2. DIGITAL NOTE PUBLISH (SINGLE)
+  // 2. SECURED DIGITAL NOTE PUBLISH (SINGLE) (Check #9)
   const handleDigitalNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -106,7 +134,10 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
     
     startTransition(async () => {
       const formData = new FormData(form);
-      formData.append("pages", JSON.stringify(topicPages));
+      
+      // 🔒 Sanitize HTML content on all pages to prevent Stored XSS
+      const sanitizedPages = topicPages.map((p) => sanitizeNoteHtml(p));
+      formData.append("pages", JSON.stringify(sanitizedPages));
       
       const result = await createDigitalNoteAction(formData);
       if (result?.error) { toast.error(result.error); } 
@@ -118,10 +149,15 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
     });
   };
 
-  // 3. DIGITAL NOTE PUBLISH (BULK JSON)
+  // 3. SECURED DIGITAL NOTE PUBLISH (BULK JSON) (Check #9)
   const handleBulkDigitalNotes = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("JSON file too large (Max 5MB).");
+      return;
+    }
     
     const toastId = toast.loading("Parsing JSON & Uploading...");
     try {
@@ -129,7 +165,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
       let parsedData = JSON.parse(text);
       
       if (!Array.isArray(parsedData) && !parsedData.pages) {
-         // Agar JSON single object ho par array mein na ho
          parsedData = [parsedData];
       }
       
@@ -137,6 +172,11 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
 
       if (dataArray.length === 0) {
         toast.error("File is empty or formatted incorrectly!", { id: toastId }); return;
+      }
+
+      if (dataArray.length > 200) {
+        toast.error("Maximum 200 topics allowed per bulk upload.", { id: toastId });
+        return;
       }
 
       for (const item of dataArray) {
@@ -147,14 +187,19 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
         fd.append("main_topic", item.main_topic || "General Topics");
         fd.append("title", item.title || "Untitled Topic");
         fd.append("read_time", item.read_time || "10 min");
-        fd.append("pages", JSON.stringify(item.pages || []));
+        
+        // 🔒 Sanitize pages HTML in bulk JSON
+        const rawPages = Array.isArray(item.pages) ? item.pages : [];
+        const cleanPages = rawPages.map((p: string) => sanitizeNoteHtml(String(p)));
+        fd.append("pages", JSON.stringify(cleanPages));
         
         await createDigitalNoteAction(fd);
       }
       toast.success(`Successfully uploaded ${dataArray.length} digital topics! 🎉`, { id: toastId });
       router.refresh();
     } catch (err: any) {
-      toast.error("Upload failed: " + err.message, { id: toastId });
+      console.error("[Bulk JSON Parse Error]:", err);
+      toast.error("Upload failed: Invalid JSON structure.", { id: toastId });
     }
   };
 
@@ -184,14 +229,14 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
       {noteMode === 'handwritten' && (
         <form onSubmit={handleNotePublish} className="space-y-4 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2"><Label className="text-zinc-300">Note Title</Label><Input name="title" required disabled={isNoteUploading} placeholder="e.g. Relational Algebra PDF" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
-            <div className="space-y-2"><Label className="text-zinc-300">Subject Category</Label><Input name="subject" required disabled={isNoteUploading} placeholder="e.g. Database Systems" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+            <div className="space-y-2"><Label className="text-zinc-300">Note Title</Label><Input name="title" maxLength={100} required disabled={isNoteUploading} placeholder="e.g. Relational Algebra PDF" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+            <div className="space-y-2"><Label className="text-zinc-300">Subject Category</Label><Input name="subject" maxLength={50} required disabled={isNoteUploading} placeholder="e.g. Database Systems" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
           </div>
-          <div className="space-y-2"><Label className="text-zinc-300">Description</Label><Input name="description" required disabled={isNoteUploading} placeholder="Topics covered in this PDF..." className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+          <div className="space-y-2"><Label className="text-zinc-300">Description</Label><Input name="description" maxLength={300} required disabled={isNoteUploading} placeholder="Topics covered in this PDF..." className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
           
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
-              <Label className="text-zinc-300">Upload Document (PDF)</Label>
+              <Label className="text-zinc-300">Upload Document (PDF • Max 50MB)</Label>
               <div className="flex bg-white/5 rounded-lg p-1">
                 <button type="button" onClick={() => setPdfMode('upload')} className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${pdfMode === 'upload' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}>Upload File</button>
                 <button type="button" onClick={() => setPdfMode('link')} className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${pdfMode === 'link' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}>Drive Link</button>
@@ -267,11 +312,11 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-zinc-300">Main Topic (Chapter Heading)</Label>
-                  <Input name="main_topic" placeholder="e.g. Mathematical Logic" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+                  <Input name="main_topic" maxLength={100} placeholder="e.g. Mathematical Logic" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label className="text-zinc-300">Topic Title (Sub Topic)</Label><Input name="title" required placeholder="e.g. Relational Algebra Basics" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
-                  <div className="space-y-2"><Label className="text-zinc-300">Read Time</Label><Input name="read_time" required placeholder="e.g. 10 min" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+                  <div className="space-y-2"><Label className="text-zinc-300">Topic Title (Sub Topic)</Label><Input name="title" maxLength={100} required placeholder="e.g. Relational Algebra Basics" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
+                  <div className="space-y-2"><Label className="text-zinc-300">Read Time</Label><Input name="read_time" maxLength={20} required placeholder="e.g. 10 min" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" /></div>
                 </div>
               </div>
 
@@ -291,7 +336,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
               <Button type="submit" disabled={isDigitalNotePending} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-11 rounded-xl mt-4">{isDigitalNotePending ? "Publishing..." : "Publish Digital Topic"}</Button>
             </form>
           ) : (
-            // 🔥 BULK JSON UPLOAD FOR DIGITAL NOTES 🔥
             <div className="p-8 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-6 animate-in fade-in duration-200">
               <div>
                 <h3 className="text-lg font-bold text-emerald-400">⚡ Bulk Upload Digital Notes</h3>
@@ -393,6 +437,12 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
                 <input type="file" accept=".csv, .json" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.error("File size must be under 5MB.");
+                    return;
+                  }
+
                   const text = await file.text();
                   let parsedData: any[] = [];
                   try {
@@ -409,6 +459,11 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
                       }
                     }
                     if (parsedData.length === 0) return toast.error("File is empty!");
+                    
+                    if (parsedData.length > 500) {
+                      return toast.error("Maximum 500 questions allowed per bulk upload.");
+                    }
+
                     const dataToUpload = parsedData.map(item => ({ ...item, paper_type: questionData.paper_type, unit_number: questionData.unit_number, explanation: item.explanation || "" }));
                     const toastId = toast.loading(`Uploading ${dataToUpload.length} questions...`);
                     const result = await createBulkQuestionsAction(dataToUpload);

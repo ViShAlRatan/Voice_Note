@@ -3,6 +3,45 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@layer utilities {
+  /* Classic Clay Card */
+  .clay-card {
+    background: #18181b; /* Dark mode base */
+    border-radius: 28px;
+    box-shadow: 
+      12px 12px 24px rgba(0, 0, 0, 0.6),
+      -10px -10px 20px rgba(255, 255, 255, 0.05),
+      inset 4px 4px 8px rgba(255, 255, 255, 0.1),
+      inset -4px -4px 8px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Clay Button */
+  .clay-button {
+    border-radius: 20px;
+    background: linear-gradient(145deg, #27272a, #09090b);
+    box-shadow: 
+      6px 6px 12px rgba(0, 0, 0, 0.5),
+      -4px -4px 10px rgba(255, 255, 255, 0.07),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+  }
+  .clay-button:active {
+    box-shadow: 
+      inset 4px 4px 8px rgba(0, 0, 0, 0.8),
+      inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+  }
+
+  /* Clay Input Box */
+  .clay-input {
+    background: #09090b;
+    border-radius: 18px;
+    box-shadow: 
+      inset 4px 4px 8px rgba(0, 0, 0, 0.8),
+      inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
 
 @theme inline {
     --font-heading: var(--font-sans);

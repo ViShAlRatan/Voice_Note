@@ -1,3 +1,4 @@
+// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
@@ -26,42 +27,66 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // 2. Check if user is logged in (Admin check)
-  const { data: { user } } = await supabase.auth.getUser();
+  const path = request.nextUrl.pathname;
 
-  // 3. Agar user logged in HAIN (yani aap Admin hain), toh direct aage jaane do
+  // 🔒 Allow login, admin-login, and auth routes to bypass middleware freely
+  if (path.startsWith('/login') || path.startsWith('/admin-login') || path.startsWith('/auth')) {
+    return response;
+  }
+
+  // 2. Get current user session safely
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  // 3. SECURE /admin ROUTES ON THE SERVER-SIDE (Exclude /admin-login exactly!)
+  if (path.startsWith('/admin') && path !== '/admin-login') {
+    if (userError || !user) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // Verify if the user has 'admin' role in the profiles table (Safe query)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // If profile doesn't exist or role is not admin, redirect safely
+    if (!profile || profile.role !== 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    return response;
+  }
+
+  // 4. Agar user logged in hai, toh aage jaane do
   if (user) {
     return response;
   }
 
-  // 4. Agar user logged in NAHI hai, toh DB se check karo ki Maintenance ON hai kya?
-  const { data: settings } = await supabase.from('site_settings').select('is_maintenance').eq('id', 1).single();
+  // 5. Check Maintenance mode safely using .maybeSingle()
+  try {
+    const { data: settings } = await supabase
+      .from('site_settings')
+      .select('is_maintenance')
+      .eq('id', 1)
+      .maybeSingle();
 
-  // 5. Agar Maintenance ON hai, toh unhe 'maintenance' page par rewrite kar do (URL change nahi hoga)
-  if (settings?.is_maintenance) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/maintenance';
-    return NextResponse.rewrite(url);
+    // 6. Agar Maintenance ON hai, toh 'maintenance' page par rewrite kar do
+    if (settings?.is_maintenance) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/maintenance';
+      return NextResponse.rewrite(url);
+    }
+  } catch (err) {
+    console.error("Maintenance check skipped:", err);
   }
 
   return response;
 }
 
-// Ye define karta hai ki middleware kahan chalega
-// middleware.ts ke bilkul aakhir mein ye likhein:
-
+// 7. Matcher Config
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - admin (admin dashboard)
-     * - maintenance (YE BAHUT ZAROORI HAI - warna 404 aayega)
-     * - sitemap.xml (SEO sitemap - Googlebot ke liye)
-     * - robots.txt (SEO robots - Googlebot ke liye)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|admin|maintenance|sitemap\\.xml|robots\\.txt).*)',
+    '/((?!_next/static|_next/image|favicon.ico|maintenance|sitemap\\.xml|robots\\.txt).*)',
   ],
 };
