@@ -82,7 +82,7 @@ function safeErrorMessage(error: any, fallbackMessage: string): string {
 const VALID_PAPERS = ["paper1", "paper2"];
 const VALID_UNITS = ["unit1", "unit2", "unit3", "unit4", "unit5", "unit6", "unit7", "unit8", "unit9", "unit10"];
 const VALID_OPTIONS = ["A", "B", "C", "D"];
-const ALLOWED_DELETE_TABLES = ["apps", "notes", "blogs", "messages", "digital_topics"] as const;
+const ALLOWED_DELETE_TABLES = ["apps", "notes", "blogs", "messages", "digital_topics", "class_notes"] as const;
 
 // ============================================================================
 // 🚀 SECURED CONTENT ACTIONS

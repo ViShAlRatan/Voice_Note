@@ -2,13 +2,13 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Smartphone, BookOpen, Terminal, Trash2, MonitorSmartphone, PenTool, HelpCircle, Pencil, X } from "lucide-react";
+import { Smartphone, BookOpen, Terminal, Trash2, MonitorSmartphone, PenTool, HelpCircle, Pencil, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { deleteItemAction } from "@/app/actions/admin";
 import { createClient } from "@/lib/supabase/client";
 
-type AllowedTables = "apps" | "notes" | "blogs" | "messages" | "digital_topics" | "question_bank";
+type AllowedTables = "apps" | "notes" | "blogs" | "messages" | "digital_topics" | "question_bank" | "class_notes";
 
 // 🔥 STATIC UNITS FROM OFFICIAL PDF SYLLABUS 🔥
 const PAPER1_UNITS = [
@@ -44,12 +44,17 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
   
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; table: AllowedTables | null; id: string | null; title: string; }>({ isOpen: false, table: null, id: null, title: "" });
 
-  const [noteMode, setNoteMode] = useState<'handwritten' | 'digital'>('handwritten');
+  const [noteMode, setNoteMode] = useState<'handwritten' | 'digital' | 'class-notes'>('digital');
   const [digitalNotes, setDigitalNotes] = useState<any[]>([]);
+  const [classNotes, setClassNotes] = useState<any[]>([]);
 
-  // 🔴 Edit Digital Note States (ADDED main_topic)
+  // 🔴 Edit Digital Note States
   const [editDigitalModal, setEditDigitalModal] = useState<{ isOpen: boolean; topic: any }>({ isOpen: false, topic: null });
   const [editForm, setEditForm] = useState({ title: '', read_time: '', paper_type: '', unit_number: '', main_topic: '', pages: [''] });
+
+  // 🔴 Edit Class Note States
+  const [editClassNoteModal, setEditClassNoteModal] = useState<{ isOpen: boolean; note: any }>({ isOpen: false, note: null });
+  const [classEditForm, setClassEditForm] = useState({ title: '', subject: '', description: '', paper_type: 'paper1', unit_number: 'unit1' });
 
   // 🔴 Question Bank Management States
   const [qPaper, setQPaper] = useState('paper1');
@@ -58,14 +63,16 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
 
   useEffect(() => {
-    const fetchDigitalNotes = async () => {
-      const { data } = await supabase.from("digital_topics").select("*, digital_subjects(name)").order("created_at", { ascending: false });
-      if (data) setDigitalNotes(data);
+    const fetchData = async () => {
+      const { data: digData } = await supabase.from("digital_topics").select("*, digital_subjects(name)").order("created_at", { ascending: false });
+      if (digData) setDigitalNotes(digData);
+
+      const { data: clsData } = await supabase.from("class_notes").select("*").order("created_at", { ascending: false });
+      if (clsData) setClassNotes(clsData);
     };
-    fetchDigitalNotes();
+    fetchData();
   }, [supabase]);
 
-  // 🔥 Question Bank fetch karne ke liye jab paper ya unit change ho
   useEffect(() => {
     const fetchQuestions = async () => {
       const { data } = await supabase
@@ -76,7 +83,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
       
       if (data) {
         setBankQuestions(data);
-        setSelectedQuestionId(''); // Reset selection
+        setSelectedQuestionId('');
       }
     };
     fetchQuestions();
@@ -91,8 +98,9 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         toast.success("Item deleted successfully!"); 
         if (deleteModal.table === "digital_topics") {
           setDigitalNotes(prev => prev.filter(n => n.id !== deleteModal.id));
-        }
-        if (deleteModal.table === "question_bank") {
+        } else if (deleteModal.table === "class_notes") {
+          setClassNotes(prev => prev.filter(n => n.id !== deleteModal.id));
+        } else if (deleteModal.table === "question_bank") {
           setBankQuestions(prev => prev.filter(q => q.id !== deleteModal.id));
           setSelectedQuestionId('');
         }
@@ -102,7 +110,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
     });
   }
 
-  // 🔥 Open Edit Modal Logic
   function openEditModal(topic: any) {
     let parsedPages = [''];
     if (topic.pages) {
@@ -111,8 +118,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
       } catch (e) {
         parsedPages = [topic.pages];
       }
-    } else if (topic.content) {
-      parsedPages = (topic.content || "").split('[PAGE_BREAK]');
     }
 
     setEditForm({
@@ -120,13 +125,23 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
       read_time: topic.read_time || '',
       paper_type: topic.paper_type || 'paper1',
       unit_number: topic.unit_number || 'unit1',
-      main_topic: topic.main_topic || '', // 🔥 Add Main Topic Here
+      main_topic: topic.main_topic || '',
       pages: parsedPages
     });
     setEditDigitalModal({ isOpen: true, topic });
   }
 
-  // 🔥 Handle Update Topic
+  function openClassNoteEditModal(note: any) {
+    setClassEditForm({
+      title: note.title || '',
+      subject: note.subject || '',
+      description: note.description || '',
+      paper_type: note.paper_type || 'paper1',
+      unit_number: note.unit_number || 'unit1',
+    });
+    setEditClassNoteModal({ isOpen: true, note });
+  }
+
   async function handleUpdateTopic(e: React.FormEvent) {
     e.preventDefault();
     if (!editDigitalModal.topic) return;
@@ -139,7 +154,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
           read_time: editForm.read_time,
           paper_type: editForm.paper_type,
           unit_number: editForm.unit_number,
-          main_topic: editForm.main_topic, // 🔥 Add Main Topic Here
+          main_topic: editForm.main_topic,
           pages: JSON.stringify(editForm.pages)
         })
         .eq('id', editDigitalModal.topic.id);
@@ -150,15 +165,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         toast.success("Topic updated successfully!");
         setDigitalNotes(prev => prev.map(n => 
           n.id === editDigitalModal.topic.id 
-            ? { 
-                ...n, 
-                title: editForm.title, 
-                read_time: editForm.read_time, 
-                paper_type: editForm.paper_type, 
-                unit_number: editForm.unit_number,
-                main_topic: editForm.main_topic, // 🔥 Update UI State
-                pages: JSON.stringify(editForm.pages) 
-              } 
+            ? { ...n, ...editForm, pages: JSON.stringify(editForm.pages) } 
             : n
         ));
         setEditDigitalModal({ isOpen: false, topic: null });
@@ -167,9 +174,40 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
     });
   }
 
-  // Helper variables to determine which unit list to display
+  async function handleUpdateClassNote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editClassNoteModal.note) return;
+
+    startTransition(async () => {
+      const { error } = await supabase
+        .from('class_notes')
+        .update({
+          title: classEditForm.title,
+          subject: classEditForm.subject,
+          description: classEditForm.description,
+          paper_type: classEditForm.paper_type,
+          unit_number: classEditForm.unit_number,
+        })
+        .eq('id', editClassNoteModal.note.id);
+
+      if (error) {
+        toast.error(`Update failed: ${error.message}`);
+      } else {
+        toast.success("Class note updated successfully!");
+        setClassNotes(prev => prev.map(n => 
+          n.id === editClassNoteModal.note.id 
+            ? { ...n, ...classEditForm } 
+            : n
+        ));
+        setEditClassNoteModal({ isOpen: false, note: null });
+        router.refresh();
+      }
+    });
+  }
+
   const activeQuestionUnits = qPaper === 'paper1' ? PAPER1_UNITS : PAPER2_UNITS;
   const activeEditUnits = editForm.paper_type === 'paper1' ? PAPER1_UNITS : PAPER2_UNITS;
+  const activeClassEditUnits = classEditForm.paper_type === 'paper1' ? PAPER1_UNITS : PAPER2_UNITS;
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in zoom-in-95 duration-500">
@@ -206,17 +244,20 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
             <div><h2 className="text-xl font-semibold">Manage Notes</h2><p className="text-xs text-zinc-400">All published study materials</p></div>
           </div>
           <span className="px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-xs font-mono text-zinc-400 w-max">
-            {safeNotes.length + digitalNotes.length} Total Notes
+            {safeNotes.length + digitalNotes.length + classNotes.length} Total Notes
           </span>
         </div>
 
         {/* Toggle Buttons */}
-        <div className="flex bg-zinc-900/80 border border-white/10 rounded-xl p-1 w-full sm:w-max mb-6">
-          <button type="button" onClick={() => setNoteMode('digital')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'digital' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
-            <MonitorSmartphone className="w-4 h-4" /> Digital Content ({digitalNotes.length})
+        <div className="flex flex-wrap bg-zinc-900/80 border border-white/10 rounded-xl p-1 w-full gap-1 mb-6">
+          <button type="button" onClick={() => setNoteMode('digital')} className={`flex-1 py-2 text-xs sm:text-sm rounded-lg font-bold transition-all ${noteMode === 'digital' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white'}`}>
+            Digital Content ({digitalNotes.length})
           </button>
-          <button type="button" onClick={() => setNoteMode('handwritten')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'handwritten' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
-            <PenTool className="w-4 h-4" /> Handwritten ({safeNotes.length})
+          <button type="button" onClick={() => setNoteMode('class-notes')} className={`flex-1 py-2 text-xs sm:text-sm rounded-lg font-bold transition-all ${noteMode === 'class-notes' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white'}`}>
+            Class Notes ({classNotes.length})
+          </button>
+          <button type="button" onClick={() => setNoteMode('handwritten')} className={`flex-1 py-2 text-xs sm:text-sm rounded-lg font-bold transition-all ${noteMode === 'handwritten' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white'}`}>
+            Handwritten ({safeNotes.length})
           </button>
         </div>
 
@@ -238,7 +279,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                       </p>
                     </div>
                     
-                    {/* EDIT & DELETE BUTTONS */}
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                       <Button variant="outline" size="sm" onClick={() => openEditModal(note)} className="border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs w-full sm:w-auto">
                         <Pencil className="w-4 h-4 mr-2" /> Edit
@@ -255,7 +295,41 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
           </div>
         )}
 
-        {/* 2. HANDWRITTEN NOTES LIST */}
+        {/* 2. CLASS NOTES LIST */}
+        {noteMode === 'class-notes' && (
+          <div className="animate-in fade-in duration-300">
+            {classNotes.length === 0 ? ( <p className="text-sm text-zinc-500 italic text-center py-8 bg-black/20 rounded-2xl">No class notes published yet.</p> ) : (
+              <div className="space-y-3">
+                {classNotes.map((note: any) => (
+                  <div key={note.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-black/40 border border-white/10 gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">Class Note</span>
+                        <p className="font-semibold text-white text-base">{note.title}</p>
+                      </div>
+                      <p className="text-xs text-zinc-400 font-mono mt-1">
+                        Subject: <span className="text-emerald-400 mr-2">{note.subject}</span>
+                        Pages: <span className="text-zinc-300">{note.image_urls?.length || 0} pages</span>
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button variant="outline" size="sm" onClick={() => openClassNoteEditModal(note)} className="border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs w-full sm:w-auto">
+                        <Pencil className="w-4 h-4 mr-2" /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setDeleteModal({ isOpen: true, table: "class_notes", id: note.id, title: `Class Note: ${note.title}` })} className="border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs w-full sm:w-auto">
+                        <Trash2 className="w-4 h-4 mr-2" /> Delete
+                      </Button>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3. HANDWRITTEN NOTES LIST */}
         {noteMode === 'handwritten' && (
           <div className="animate-in fade-in duration-300">
             {safeNotes.length === 0 ? ( <p className="text-sm text-zinc-500 italic text-center py-8 bg-black/20 rounded-2xl">No handwritten PDFs published yet.</p> ) : (
@@ -280,7 +354,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         )}
       </div>
 
-      {/* 🔴 MANAGE QUESTIONS SECTION WITH SMART DROPDOWN */}
+      {/* MANAGE QUESTIONS SECTION */}
       <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -297,7 +371,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                 value={qPaper} 
                 onChange={(e) => {
                   setQPaper(e.target.value);
-                  setQUnit('unit1'); // 🔥 Reset unit when paper changes
+                  setQUnit('unit1');
                 }} 
                 className="w-full bg-black border border-white/10 text-white h-11 rounded-xl px-3 text-sm focus:outline-none focus:border-blue-500"
               >
@@ -313,7 +387,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                 onChange={(e) => setQUnit(e.target.value)} 
                 className="w-full bg-black border border-white/10 text-white h-11 rounded-xl px-3 text-sm focus:outline-none focus:border-blue-500"
               >
-                {/* 🔥 DYNAMICALLY SHOWING UNIT + SUBJECT NAME 🔥 */}
                 {activeQuestionUnits.map(u => (
                   <option key={u.id} value={u.id}>Unit {u.id.replace('unit', '')}: {u.name}</option>
                 ))}
@@ -384,11 +457,10 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
         )}
       </div>
 
-      {/* 🔴 EDIT DIGITAL NOTE MODAL WITH SMART DROPDOWNS & MAIN TOPIC 🔴 */}
+      {/* EDIT DIGITAL NOTE MODAL */}
       {editDigitalModal.isOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
-            
+          <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-white flex items-center gap-2">
                 <Pencil className="w-6 h-6 text-emerald-500" /> Edit Digital Note
@@ -399,8 +471,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
             </div>
 
             <form onSubmit={handleUpdateTopic} className="space-y-6">
-              
-              {/* 🔥 SMART FIELDS: CHANGES UNITS BASED ON PAPER 🔥 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-300">Syllabus Target (Paper)</label>
@@ -422,7 +492,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                     onChange={e => setEditForm({ ...editForm, unit_number: e.target.value })} 
                     className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500 truncate pr-8"
                   >
-                    {/* 🔥 DYNAMICALLY SHOWING UNIT + SUBJECT NAME 🔥 */}
                     {activeEditUnits.map(u => (
                       <option key={u.id} value={u.id}>Unit {u.id.replace('unit', '')}: {u.name}</option>
                     ))}
@@ -430,7 +499,6 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                 </div>
               </div>
 
-              {/* 🔥 NEW FIELD: MAIN TOPIC 🔥 */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-300">Main Topic (Chapter Heading)</label>
                 <input 
@@ -440,35 +508,21 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                   placeholder="e.g. Mathematical Logic"
                   className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
                 />
-                <p className="text-[10px] text-zinc-500 mt-1">Leave blank to place this note under "General Topics"</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-300">Topic Title</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={editForm.title} 
-                    onChange={e => setEditForm({ ...editForm, title: e.target.value })} 
-                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
-                  />
+                  <input required type="text" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-300">Read Time</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={editForm.read_time} 
-                    onChange={e => setEditForm({ ...editForm, read_time: e.target.value })} 
-                    className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500"
-                  />
+                  <input required type="text" value={editForm.read_time} onChange={e => setEditForm({ ...editForm, read_time: e.target.value })} className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
 
               <div className="space-y-4">
                 <label className="text-sm font-medium text-zinc-300 block border-b border-white/10 pb-2">Edit Pages Content</label>
-                
                 {editForm.pages.map((page, index) => (
                   <div key={index} className="relative bg-zinc-900/50 p-4 rounded-xl border border-white/10">
                     <div className="flex justify-between items-center mb-2">
@@ -477,9 +531,7 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                         <button type="button" onClick={() => {
                           const newPages = editForm.pages.filter((_, i) => i !== index);
                           setEditForm({ ...editForm, pages: newPages });
-                        }} className="text-red-400 text-xs font-bold hover:underline">
-                          Remove Page
-                        </button>
+                        }} className="text-red-400 text-xs font-bold hover:underline">Remove Page</button>
                       )}
                     </div>
                     <textarea 
@@ -490,25 +542,72 @@ export default function ManageTab({ safeApps, safeNotes, safeBlogs }: any) {
                         newPages[index] = e.target.value;
                         setEditForm({ ...editForm, pages: newPages });
                       }}
-                      className="flex min-h-[200px] w-full rounded-xl border border-white/5 bg-black/50 px-4 py-3 text-sm text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 custom-scrollbar" 
+                      className="flex min-h-[200px] w-full rounded-xl border border-white/5 bg-black/50 px-4 py-3 text-sm text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500" 
                     />
                   </div>
                 ))}
-                
-                <Button 
-                  type="button" 
-                  onClick={() => setEditForm({ ...editForm, pages: [...editForm.pages, ''] })} 
-                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white border border-dashed border-white/20 h-12 rounded-xl"
-                >
-                  + Add Another Page
-                </Button>
+                <Button type="button" onClick={() => setEditForm({ ...editForm, pages: [...editForm.pages, ''] })} className="w-full bg-zinc-900 hover:bg-zinc-800 text-white border border-dashed border-white/20 h-12 rounded-xl">+ Add Another Page</Button>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10">
                 <Button type="button" onClick={() => setEditDigitalModal({ isOpen: false, topic: null })} className="w-full sm:w-1/3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl h-12">Cancel</Button>
-                <Button type="submit" disabled={isPending} className="w-full sm:w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12">
-                  {isPending ? "Saving Changes..." : "Save Changes"}
-                </Button>
+                <Button type="submit" disabled={isPending} className="w-full sm:w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12">{isPending ? "Saving..." : "Save Changes"}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT CLASS NOTE MODAL */}
+      {editClassNoteModal.isOpen && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl relative">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Pencil className="w-6 h-6 text-cyan-400" /> Edit Class Note
+              </h3>
+              <button onClick={() => setEditClassNoteModal({ isOpen: false, note: null })} className="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateClassNote} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-300">Notebook Title</label>
+                <input required type="text" value={classEditForm.title} onChange={e => setClassEditForm({ ...classEditForm, title: e.target.value })} className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-cyan-500" />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-300">Subject / Lecture Name</label>
+                <input required type="text" value={classEditForm.subject} onChange={e => setClassEditForm({ ...classEditForm, subject: e.target.value })} className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-cyan-500" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Paper Type</label>
+                  <select value={classEditForm.paper_type} onChange={e => setClassEditForm({ ...classEditForm, paper_type: e.target.value, unit_number: 'unit1' })} className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none">
+                    <option value="paper1">Paper 1 (General)</option>
+                    <option value="paper2">Paper 2 (Computer Science)</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Unit Number</label>
+                  <select value={classEditForm.unit_number} onChange={e => setClassEditForm({ ...classEditForm, unit_number: e.target.value })} className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none">
+                    {activeClassEditUnits.map(u => (
+                      <option key={u.id} value={u.id}>Unit {u.id.replace('unit', '')}: {u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-300">Description</label>
+                <input type="text" value={classEditForm.description} onChange={e => setClassEditForm({ ...classEditForm, description: e.target.value })} className="w-full bg-black/50 border border-white/10 text-white h-12 rounded-xl px-4 focus:outline-none focus:border-cyan-500" />
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-white/10">
+                <Button type="button" onClick={() => setEditClassNoteModal({ isOpen: false, note: null })} className="w-1/2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl h-12">Cancel</Button>
+                <Button type="submit" disabled={isPending} className="w-1/2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl h-12">{isPending ? "Saving..." : "Save Changes"}</Button>
               </div>
             </form>
           </div>

@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BookOpen, Loader2, UploadCloud, X, Link as LinkIcon, MonitorSmartphone, PenTool } from "lucide-react";
+import { BookOpen, Loader2, UploadCloud, X, Link as LinkIcon, MonitorSmartphone, PenTool, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -36,8 +36,8 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
   const supabase = createClient();
   const [isPending, startTransition] = useTransition();
 
-  // Mode States
-  const [noteMode, setNoteMode] = useState<'handwritten' | 'digital' | 'questions'>('digital');
+  // Mode States ('class-notes' added)
+  const [noteMode, setNoteMode] = useState<'handwritten' | 'digital' | 'questions' | 'class-notes'>('digital');
   const [pdfMode, setPdfMode] = useState<'upload' | 'link'>('upload');
   
   const [digitalUploadType, setDigitalUploadType] = useState<'single' | 'bulk'>('single');
@@ -51,13 +51,17 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
   const [noteProgress, setNoteProgress] = useState<number | null>(null);
   const [isNoteUploading, setIsNoteUploading] = useState(false);
   const [isDigitalNotePending, setIsDigitalNotePending] = useState(false);
+
+  // Class Notes Form States
+  const [classNoteFiles, setClassNoteFiles] = useState<File[]>([]);
+  const [isClassNotePending, setIsClassNotePending] = useState(false);
   
   const [questionData, setQuestionData] = useState({
     paper_type: 'paper1', unit_number: 'unit1', question: '', opta: '', optb: '', optc: '', optd: '', correct_answer: 'A', explanation: ''
   });
   const [isQuestionPending, setIsQuestionPending] = useState(false);
 
-  // 1. SECURED HANDWRITTEN PUBLISH (Check #17 & #23)
+  // 1. SECURED HANDWRITTEN PUBLISH
   const handleNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget; 
@@ -65,7 +69,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
     if (pdfMode === 'upload') {
       if (!noteFile) { toast.error("Please select a PDF file to upload."); return; }
       
-      // 🔒 Security Validation: Max 50MB, strictly .pdf
       const pdfCheck = validateFileUpload(noteFile, {
         maxSizeMB: 50,
         allowedExtensions: [".pdf"],
@@ -80,7 +83,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
 
     if (pdfMode === 'link') {
       if (!externalPdfUrl.trim()) { toast.error("Please paste the Google Drive link."); return; }
-      // 🔒 Validate External Link is HTTPS
       if (!isValidHttpsUrl(externalPdfUrl)) {
         toast.error("Invalid PDF URL. Must be a secure https:// link.");
         return;
@@ -92,7 +94,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
 
     if (pdfMode === 'upload') {
       const interval = startSimulatedProgress(noteFile!.size, setNoteProgress);
-      // Sanitize filename
       const safeName = noteFile!.name.replace(/[^a-zA-Z0-9.-]/g, "-");
       const fileName = `${Date.now()}-${safeName}`;
       try {
@@ -126,7 +127,58 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
     });
   };
 
-  // 2. SECURED DIGITAL NOTE PUBLISH (SINGLE) (Check #9)
+  // 2. CLASS NOTES PUBLISH (Multiple Images)
+  const handleClassNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    if (classNoteFiles.length === 0) {
+      toast.error("Please select at least one notebook page image.");
+      return;
+    }
+
+    setIsClassNotePending(true);
+    const toastId = toast.loading("Uploading notebook pages...");
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (const file of classNoteFiles) {
+        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "-");
+        const fileName = `class-notes/${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('notes').upload(fileName, file);
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage.from('notes').getPublicUrl(fileName);
+        uploadedUrls.push(publicUrlData.publicUrl);
+      }
+
+      // Insert into Supabase 'class_notes' table
+      const { error: dbError } = await supabase.from('class_notes').insert({
+        title: formData.get("title"),
+        subject: formData.get("subject"),
+        paper_type: formData.get("paper_type"),
+        unit_number: formData.get("unit_number"),
+        description: formData.get("description"),
+        image_urls: uploadedUrls,
+      });
+
+      if (dbError) throw dbError;
+
+      toast.success("Class Notebook Published Successfully! 🎉", { id: toastId });
+      form.reset();
+      setClassNoteFiles([]);
+      router.refresh();
+    } catch (err: any) {
+      console.error("[Class Note Upload Error]:", err);
+      toast.error("Failed to publish class notes: " + (err.message || "Unknown error"), { id: toastId });
+    } finally {
+      setIsClassNotePending(false);
+    }
+  };
+
+  // 3. SECURED DIGITAL NOTE PUBLISH (SINGLE)
   const handleDigitalNotePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -134,8 +186,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
     
     startTransition(async () => {
       const formData = new FormData(form);
-      
-      // 🔒 Sanitize HTML content on all pages to prevent Stored XSS
       const sanitizedPages = topicPages.map((p) => sanitizeNoteHtml(p));
       formData.append("pages", JSON.stringify(sanitizedPages));
       
@@ -149,7 +199,7 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
     });
   };
 
-  // 3. SECURED DIGITAL NOTE PUBLISH (BULK JSON) (Check #9)
+  // 4. SECURED DIGITAL NOTE PUBLISH (BULK JSON)
   const handleBulkDigitalNotes = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -188,7 +238,6 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
         fd.append("title", item.title || "Untitled Topic");
         fd.append("read_time", item.read_time || "10 min");
         
-        // 🔒 Sanitize pages HTML in bulk JSON
         const rawPages = Array.isArray(item.pages) ? item.pages : [];
         const cleanPages = rawPages.map((p: string) => sanitizeNoteHtml(String(p)));
         fd.append("pages", JSON.stringify(cleanPages));
@@ -205,23 +254,25 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
 
   return (
     <div className="rounded-3xl border border-white/10 bg-zinc-950/50 backdrop-blur-xl p-8 shadow-2xl relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            {noteMode === 'handwritten' ? <PenTool className="w-5 h-5" /> : noteMode === 'digital' ? <MonitorSmartphone className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+            {noteMode === 'handwritten' ? <PenTool className="w-5 h-5" /> : noteMode === 'digital' ? <MonitorSmartphone className="w-5 h-5" /> : noteMode === 'class-notes' ? <FileText className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
           </div>
           <div>
             <h2 className="text-xl font-semibold">Publish Notes</h2>
             <p className="text-xs text-zinc-400">
-              {noteMode === 'handwritten' ? 'Upload PDF Documents' : noteMode === 'digital' ? 'Write Digital Content (GFG Style)' : 'Add MCQs to Question Bank'}
+              {noteMode === 'handwritten' ? 'Upload PDF Documents' : noteMode === 'digital' ? 'Write Digital Content (GFG Style)' : noteMode === 'class-notes' ? 'Upload Interactive Classroom Notebook Pages' : 'Add MCQs to Question Bank'}
             </p>
           </div>
         </div>
 
-        <div className="flex bg-zinc-900/80 border border-white/10 rounded-xl p-1 w-full md:w-max shrink-0">
-          <button type="button" onClick={() => setNoteMode('digital')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'digital' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><MonitorSmartphone className="w-4 h-4" /> Digital Content</button>
-          <button type="button" onClick={() => setNoteMode('handwritten')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'handwritten' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><PenTool className="w-4 h-4" /> Handwritten</button>
-          <button type="button" onClick={() => setNoteMode('questions')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg font-bold transition-all ${noteMode === 'questions' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><BookOpen className="w-4 h-4" /> Questions</button>
+        {/* Mode Selector Tabs */}
+        <div className="flex flex-wrap bg-zinc-900/80 border border-white/10 rounded-xl p-1 gap-1 shrink-0">
+          <button type="button" onClick={() => setNoteMode('digital')} className={`px-3 py-2 text-xs sm:text-sm rounded-lg font-bold transition-all ${noteMode === 'digital' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>Digital Content</button>
+          <button type="button" onClick={() => setNoteMode('handwritten')} className={`px-3 py-2 text-xs sm:text-sm rounded-lg font-bold transition-all ${noteMode === 'handwritten' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>Handwritten</button>
+          <button type="button" onClick={() => setNoteMode('class-notes')} className={`px-3 py-2 text-xs sm:text-sm rounded-lg font-bold transition-all ${noteMode === 'class-notes' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>Class Notes</button>
+          <button type="button" onClick={() => setNoteMode('questions')} className={`px-3 py-2 text-xs sm:text-sm rounded-lg font-bold transition-all ${noteMode === 'questions' ? 'bg-emerald-500 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>Questions</button>
         </div>
       </div>
 
@@ -265,7 +316,82 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
         </form>
       )}
 
-      {/* B. DIGITAL NOTES */}
+      {/* B. CLASS NOTES (Interactive Notebook Pages) */}
+      {noteMode === 'class-notes' && (
+        <form onSubmit={handleClassNotePublish} className="space-y-5 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-zinc-300">Notebook Title</Label>
+              <Input name="title" maxLength={100} required disabled={isClassNotePending} placeholder="e.g. Data Structures Live Lecture 1" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-zinc-300">Subject / Lecture Name</Label>
+              <Input name="subject" maxLength={50} required disabled={isClassNotePending} placeholder="e.g. Trees & Graphs" className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-zinc-300">Target Paper</Label>
+              <select name="paper_type" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none">
+                <option value="paper1">Paper 1 (General)</option>
+                <option value="paper2">Paper 2 (Computer Science)</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-zinc-300">Syllabus Unit</Label>
+              <select name="unit_number" required className="w-full bg-black/50 border border-white/10 text-white h-11 rounded-xl px-3 focus:outline-none">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(u => <option key={u} value={`unit${u}`}>Unit {u}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-zinc-300">Description</Label>
+            <Input name="description" maxLength={300} placeholder="Brief summary of classroom notes..." className="bg-black/50 border-white/10 text-white h-11 rounded-xl" />
+          </div>
+
+          {/* Multiple Page Images Upload */}
+          <div className="space-y-3">
+            <Label className="text-emerald-400 font-bold">Upload Notebook Page Photos (Multiple Images)</Label>
+            <div className="relative w-full h-32 rounded-2xl border border-dashed border-emerald-500/40 bg-black/50 flex flex-col items-center justify-center px-4 cursor-pointer hover:border-emerald-500 transition-all group">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setClassNoteFiles(files);
+                }}
+                disabled={isClassNotePending}
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+              />
+              <UploadCloud className="w-8 h-8 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm text-zinc-200 font-semibold">
+                {classNoteFiles.length > 0 ? `${classNoteFiles.length} page(s) selected` : "Click to select page photos"}
+              </span>
+              <span className="text-xs text-zinc-500 mt-1">Select all session pages in correct order</span>
+            </div>
+
+            {classNoteFiles.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto py-2">
+                {classNoteFiles.map((file, idx) => (
+                  <div key={idx} className="relative w-16 h-20 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
+                    <img src={URL.createObjectURL(file)} alt={`Page ${idx + 1}`} className="w-full h-full object-cover" />
+                    <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] text-center font-mono text-emerald-400">P.{idx + 1}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Button type="submit" disabled={isClassNotePending} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-11 rounded-xl mt-4 font-bold">
+            {isClassNotePending ? <><Loader2 className="animate-spin w-4 h-4 mr-2"/> Publishing Notebook...</> : "Publish Interactive Class Notes"}
+          </Button>
+        </form>
+      )}
+
+      {/* C. DIGITAL NOTES */}
       {noteMode === 'digital' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="flex bg-zinc-900/80 border border-white/10 rounded-xl p-1.5 w-full">
@@ -352,7 +478,7 @@ export default function NotePublishForm({ subjects, onOpenSubjectModal }: NotePu
         </div>
       )}
 
-      {/* C. QUESTION BANK */}
+      {/* D. QUESTION BANK */}
       {noteMode === 'questions' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="flex bg-zinc-900/80 border border-white/10 rounded-xl p-1.5 w-full">
