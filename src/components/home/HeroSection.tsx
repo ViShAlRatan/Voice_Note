@@ -32,7 +32,7 @@ const words = [
   "YouTube Lecture Notes.", 
   "UGC NET Paper 1 & 2.", 
   "CS Question Banks.", 
-  "Production Flutter Apps."
+  "CS Concepts."
 ];
 
 interface HeroSectionProps {
@@ -178,19 +178,19 @@ export default function HeroSection({ user, role }: HeroSectionProps) {
 
                   <div className="flex-1 pt-1 sm:pt-3">
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] font-black uppercase tracking-widest mb-1.5">
-                      <Award className="w-3 h-3 text-amber-400" /> Educator & Engineer
+                      <Award className="w-3 h-3 text-amber-400" /> Educator & Learner
                     </div>
                     <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Vishal Sharma</h3>
                     <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-1 leading-snug">
-                      Simplifying UGC NET & GATE CS • Full-Stack & Flutter Dev
+                      Simplifying Computer Science Concepts 
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mb-5">
-                  <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-bold text-indigo-300">🎓 UGC NET Paper 1 & 2</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-300">🧠 Discrete Logic & DBMS</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[11px] font-bold text-purple-300">📱 Flutter & Next.js</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-bold text-indigo-300">🎓 Operating System</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-300">🧠 DBMS & Computer networks</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[11px] font-bold text-purple-300">📱 Computer Graphics & COA</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 p-2.5 rounded-2xl bg-white/[0.03] border border-white/10 mb-5 text-center">

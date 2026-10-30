@@ -69,10 +69,10 @@ export default function ContactPage() {
               <span>Get in Touch</span>
             </div>
             <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              Let&apos;s Build Together
+              Any Doubt ?
             </h2>
             <p className="text-sm text-zinc-400 mt-2 max-w-sm leading-relaxed">
-              Have an architecture question, project in mind, or want to collaborate? Drop a direct message.
+              Have an architecture question, Any doubt related to Content and Website, or want to collaborate? Drop a direct message.
             </p>
           </div>
 

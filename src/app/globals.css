@@ -3,45 +3,6 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
-@layer utilities {
-  /* Classic Clay Card */
-  .clay-card {
-    background: #18181b; /* Dark mode base */
-    border-radius: 28px;
-    box-shadow: 
-      12px 12px 24px rgba(0, 0, 0, 0.6),
-      -10px -10px 20px rgba(255, 255, 255, 0.05),
-      inset 4px 4px 8px rgba(255, 255, 255, 0.1),
-      inset -4px -4px 8px rgba(0, 0, 0, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  /* Clay Button */
-  .clay-button {
-    border-radius: 20px;
-    background: linear-gradient(145deg, #27272a, #09090b);
-    box-shadow: 
-      6px 6px 12px rgba(0, 0, 0, 0.5),
-      -4px -4px 10px rgba(255, 255, 255, 0.07),
-      inset 2px 2px 4px rgba(255, 255, 255, 0.1);
-    transition: all 0.2s ease;
-  }
-  .clay-button:active {
-    box-shadow: 
-      inset 4px 4px 8px rgba(0, 0, 0, 0.8),
-      inset -4px -4px 8px rgba(255, 255, 255, 0.05);
-  }
-
-  /* Clay Input Box */
-  .clay-input {
-    background: #09090b;
-    border-radius: 18px;
-    box-shadow: 
-      inset 4px 4px 8px rgba(0, 0, 0, 0.8),
-      inset -4px -4px 8px rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-}
 
 @theme inline {
     --font-heading: var(--font-sans);
@@ -109,7 +70,7 @@
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --chart-5: oklch(31.021% 0.00142 15.864);
     --radius: 0.625rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
@@ -158,11 +119,11 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
   body {
-    @apply bg-background text-foreground;
-    }
+    @apply bg-[#27272b] text-zinc-100 font-sans antialiased;
+  }
   html {
     @apply font-sans;
-    }
+  }
 }

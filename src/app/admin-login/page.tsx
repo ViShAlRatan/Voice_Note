@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, ArrowLeft, Loader2, ShieldAlert } from "lucide-react";
+import { ShieldCheck, ArrowLeft, Loader2, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { loginAction } from "@/app/actions/auth";
 import { toast } from "sonner";
@@ -13,110 +13,119 @@ import { useRouter } from "next/navigation";
 export default function AdminLoginPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  
-  // Maine admin credentials pehle se fill kar diye hain taaki aapko baar-baar type na karna pade
-  const [email, setEmail] = useState("admin@creator.com");
-  const [password, setPassword] = useState("Admin@12345");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    // Button click hote hi turant Loading Toast show hoga
-    toast.loading("Verifying Admin Identity...", { id: "admin-auth" });
-
     startTransition(async () => {
       const result = await loginAction(formData);
       
       if (result?.error) {
-        toast.error(`Login Failed: ${result.error}`, { id: "admin-auth" });
+        toast.error(`Admin Auth Error: ${result.error}`, { icon: "🛡️" });
+      } else if (result?.role !== "admin") {
+        toast.error("Access Denied: Admin privileges required.", { icon: "⛔" });
       } else {
-        // Check if user is actually an admin
-       // Check if user is actually an admin
-        if (result?.role === "admin") {
-          
-          // 1. Purane loading toast ko turant delete/kill kar do
-          toast.dismiss("admin-auth"); 
-
-          // 2. Ekdum naya VIP toast banao (isme ID ki zarurat nahi hai)
-          toast("Admin Gateway Unlocked! ⚡", {
-            icon: "🛡️",
-            description: "Welcome back, Commander. Authorizing access...",
-            duration: 2000, 
-            style: {
-              background: "#18181b", 
-              color: "white",
-              border: "1px solid #a855f7", 
-            },
-          });
-          
-          setTimeout(() => {
-            router.push("/admin"); 
-          }, 1000);
-        } else {
-          toast.error("Access Denied: This account is not an Admin.", { id: "admin-auth" });
-        }
+        toast("Admin Gateway Verified! 👑", {
+          icon: "✨",
+          description: "Entering secure publishing CMS...",
+          style: {
+            background: "#1A1C24",
+            color: "#F4F4F6",
+            border: "1px solid rgba(139,92,246,0.4)",
+          },
+        });
+        
+        setTimeout(() => {
+          router.push("/admin");
+        }, 800); 
       }
     });
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-black p-4 text-white overflow-hidden selection:bg-white selection:text-black">
+    <main className="relative flex min-h-screen items-center justify-center bg-[#121318] p-4 text-[#F4F4F6] overflow-hidden">
       
-      {/* Red/Purple VIP Admin Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-red-purple/10 blur-[150px] rounded-full pointer-events-none" />
+      {/* Background Ambient Violet Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/10 blur-[140px] rounded-full pointer-events-none" />
 
+      {/* Back to Home Button */}
       <div className="absolute top-6 left-6 md:top-8 md:left-8 z-10">
-        <Link href="/login" className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/10 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800/80 transition-all duration-300 backdrop-blur-xl shadow-lg">
-          <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
-          <span>Back</span>
+        <Link href="/" className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl clay-button text-sm text-zinc-300 hover:text-white transition-all shadow-lg border border-white/5">
+          <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1 text-violet-400" />
+          <span>Home</span>
         </Link>
       </div>
 
       <div className="z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-700">
-        <div className="rounded-3xl border border-purple-500/20 bg-zinc-950/80 backdrop-blur-2xl p-8 md:p-10 shadow-2xl shadow-red-500/5 relative overflow-hidden">
+        <div className="clay-card p-8 md:p-10 relative overflow-hidden bg-gradient-to-br from-[#1A1C24] to-[#121318] border border-violet-500/20">
           
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full clay-badge text-violet-400 text-xs font-semibold shadow-inner">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Restricted Admin Gateway</span>
+            </div>
+          </div>
 
-          <div className="flex flex-col items-center mb-8 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20 text-purple-400">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 rounded-3xl clay-button flex items-center justify-center mb-4 text-violet-400">
               <ShieldCheck className="w-7 h-7" />
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">Admin Gateway</h2>
-            <p className="text-sm text-zinc-400">Restricted Area. Authorized personnel only.</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-2">Admin Portal</h2>
+            <p className="text-xs text-zinc-400 text-center font-medium">Enter authorized credentials to manage publishing CMS.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Admin Email</Label>
+              <Label className="text-zinc-300 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-violet-400" /> Admin Email
+              </Label>
               <Input 
                 name="email" 
                 type="email" 
                 required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 disabled={isPending} 
-                className="bg-black/50 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-1 focus-visible:ring-blue-200 h-11 rounded-xl" 
+                placeholder="admin@creator.com" 
+                className="clay-input text-white placeholder:text-zinc-600 h-12 px-4 border-none" 
               />
             </div>
+
             <div className="space-y-2">
-              <Label className="text-zinc-300">Master Password</Label>
-              <Input 
-                name="password" 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isPending} 
-                className="bg-black/50 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-1 focus-visible:ring-blue-200 h-11 rounded-xl" 
-              />
+              <Label htmlFor="password" className="text-zinc-300 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-violet-400" /> Password
+              </Label>
+              <div className="relative">
+                <Input 
+                  id="password" 
+                  name="password" 
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  placeholder="••••••••" 
+                  disabled={isPending} 
+                  className="clay-input text-white placeholder:text-zinc-600 h-12 px-4 pr-12 border-none" 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-violet-400 hover:text-violet-300 transition-colors font-semibold"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
             
-            <Button type="submit" disabled={isPending} className="w-full h-12 mt-6 bg-purple-600 hover:bg-purple-700 text-white font-medium transition-all shadow-lg shadow-purple-500/20 rounded-xl flex items-center justify-center gap-2">
-              {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldAlert className="h-5 w-5" />}
-              {isPending ? "Authenticating..." : "Login to Admin CMS"}
+            <Button type="submit" disabled={isPending} className="w-full h-12 mt-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold transition-all shadow-[0_10px_20px_rgba(139,92,246,0.3)] rounded-2xl flex items-center justify-center gap-2 border border-violet-400/20 active:scale-[0.98]">
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isPending ? "Verifying Admin..." : "Authenticate Admin CMS"}
             </Button>
           </form>
+
+          <div className="mt-8 pt-6 border-t border-white/5 text-center">
+            <Link href="/login" className="text-xs text-zinc-400 hover:text-white transition-colors font-medium">
+              ← Return to Student Login
+            </Link>
+          </div>
 
         </div>
       </div>

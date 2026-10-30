@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/app/globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { AiDoubtAssistant } from "@/components/AiDoubtAssistant";
 
 //for inspect on off
 import DisableInspect from './DisableInspect';
@@ -21,6 +22,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
 
 
 export const metadata: Metadata = {
@@ -59,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* Toaster yahan add karna zaroori hai tabhi notifications dikhenge */}
         <Toaster position="top-center" richColors theme="dark" />
+        <AiDoubtAssistant />
         
       </body>
     </html>

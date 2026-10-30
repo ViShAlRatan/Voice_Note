@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Search, Home, PlayCircle, BookOpen, Trophy, Smartphone, Sparkles, Heart, Menu, X, Loader2 } from "lucide-react";
+import { Search, Home, PlayCircle, BookOpen, Trophy, Smartphone, Sparkles, Heart, Menu, X, Loader2, MessageCircleCode, MessageCircleMore } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -93,6 +93,7 @@ export default function Navbar({ user, role, profile, loading, navHidden, onOpen
               <Link href="/practice" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-amber-400 flex items-center gap-3"><Trophy className="w-4 h-4"/> Practice Question Bank</Link>
               <Link href="/apps" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3"><Smartphone className="w-4 h-4 text-purple-400"/> Flutter Apps Hub</Link>
               <Link href="/blog" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3"><Sparkles className="w-4 h-4 text-blue-400"/> Tech Blog</Link>
+              <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3"><MessageCircleMore className="w-4 h-4 text-pink-400"/> Any Doubt ?</Link>
             </nav>
             {!user && (
               <div className="pt-3 border-t border-white/10 grid grid-cols-2 gap-3">
