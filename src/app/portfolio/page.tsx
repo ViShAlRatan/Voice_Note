@@ -143,7 +143,7 @@ export default function Portfolio() {
             <a href="#qualifications" className="hover:text-white transition-colors">Qualifications</a>
             <a href="#work" className="hover:text-white transition-colors">Resources</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-            <a href="mailto:your-email@example.com" className="px-5 py-2.5 bg-white text-black
+            <a href="mailto:vi12909023@gmail.com" className="px-5 py-2.5 bg-white text-black
              hover:bg-gray-200 rounded-full transition-all font-semibold">Email Me</a>
           </div>
 
@@ -187,12 +187,12 @@ export default function Portfolio() {
           <div className="flex-1 w-full">
             <div className="overflow-hidden mb-2 md:mb-4">
               <h1 className="hero-title-line text-5xl sm:text-6xl md:text-[8rem] leading-[1.1] 
-              font-light tracking-tight translate-y-[100px] opacity-0">Teacher &</h1>
+              font-light tracking-tight translate-y-[100px] opacity-0">Educator &</h1>
             </div>
             <div className="overflow-hidden mb-6 md:mb-8">
               <h1 className="hero-title-line text-5xl sm:text-6xl md:text-[8rem] leading-[1.1] 
               font-light tracking-tight translate-y-[100px] opacity-0 text-transparent bg-clip-text
-               bg-gradient-to-r from-white via-gray-200 to-gray-500">Flutter Dev.</h1>
+               bg-gradient-to-r from-white via-gray-200 to-gray-500">Learner</h1>
             </div>
           </div>
 
@@ -208,7 +208,7 @@ export default function Portfolio() {
                from-blue-400 to-purple-500">
                 <div className="w-full h-full bg-[#0a0a0a] rounded-full overflow-hidden border-4
                  border-[#0a0a0a]">
-                  <img src="/dev.jpg" alt="Profile" className="w-full h-full object-cover 
+                  <img src="/dev1.jpg" alt="Profile" className="w-full h-full object-cover 
                   transform group-hover:scale-110 transition-transform duration-700" />
                 </div>
               </div>
@@ -231,7 +231,7 @@ export default function Portfolio() {
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 rounded-xl p-[2px] bg-gradient-to-tr
             from-blue-400 to-purple-500">
-              <img src="/dev.jpg" alt="Profile" className="w-full h-full rounded-lg
+              <img src="/dev1.jpg" alt="Profile" className="w-full h-full rounded-lg
                bg-gray-800 object-cover" />
             </div>
             <div>
@@ -251,7 +251,7 @@ export default function Portfolio() {
           and check out the Flutter apps I've built.My philosophy is simple:
 <span className="font-bold text-fuchsia-300 "> "Let's learn new things </span> and 
 <span className="font-bold text-fuchsia-300 "> acquire knowledge </span>
-acquire knowledge every single day."I believe that learning never stops.
+ every single day."I believe that learning never stops.
         </p>
         
         <div className="hero-stats flex flex-wrap gap-4 md:gap-6 mt-10 md:mt-12 translate-y-8 opacity-0">

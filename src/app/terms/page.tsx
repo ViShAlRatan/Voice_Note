@@ -1,84 +1,149 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import {
+  ArrowLeft,
+  Scale,
+  BookOpen,
+  AlertTriangle,
+  ShieldAlert,
+  Copyright,
+  Ban,
+  Gavel,
+  Shield,
+} from "lucide-react";
 
 export default function TermsOfServicePage() {
-  return (
-    <div className="min-h-screen bg-black text-white selection:bg-purple-500/30 selection:text-white relative overflow-hidden">
-      
-      {/* Background Ambient Glow */}
-      <div className="absolute top-0 right-1/4 w-[800px] h-[400px] bg-purple-500/10 blur-[150px] pointer-events-none" />
+  const lastUpdated = "October 30, 2026";
 
-      {/* Back Button */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="absolute top-6 left-6 md:top-10 md:left-10 z-50"
-      >
-        <Link 
-          href="/" 
-          className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/10 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800/80 hover:border-white/20 transition-all duration-300 backdrop-blur-xl shadow-lg"
+  return (
+    <main className="relative min-h-screen bg-black text-white py-16 px-4 sm:px-6 lg:px-8 overflow-hidden selection:bg-indigo-500 selection:text-white">
+      {/* Ambient Background Glows */}
+      <div className="fixed top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-tr from-amber-500/10 via-indigo-500/15 to-transparent blur-[150px] rounded-full pointer-events-none" />
+
+      {/* Top Navigation Bar */}
+      <div className="max-w-4xl mx-auto mb-8 flex items-center justify-between relative z-20">
+        <Link
+          href="/"
+          className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/70 border border-white/10 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800/90 hover:border-white/20 transition-all duration-300 backdrop-blur-xl shadow-lg"
         >
           <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
           <span>Back to Home</span>
         </Link>
-      </motion.div>
 
-      {/* Content Container */}
-      <div className="max-w-4xl mx-auto px-6 pt-32 pb-20 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="rounded-3xl border border-white/10 bg-zinc-950/60 backdrop-blur-2xl p-8 md:p-14 shadow-2xl"
+        <Link
+          href="/privacy"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition-all"
         >
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-8 shadow-inner">
-            <FileText className="w-8 h-8" />
-          </div>
-          
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">
-            Terms of Service
-          </h1>
-          <p className="text-zinc-400 text-sm md:text-base mb-10 border-b border-white/10 pb-8">
-            Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          </p>
-
-          <div className="space-y-8 text-zinc-300 leading-relaxed text-sm md:text-base">
-            <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">1. Acceptance of Terms</h2>
-              <p>By accessing and registering on the Voice Note platform, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by these terms, please do not use or access the platform.</p>
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">2. Description of Service</h2>
-              <p>Voice Note is a personal engineering workspace providing users with access to educational materials, database manuals, technical blogs, and compiled Flutter application binaries (APKs) strictly for testing and educational purposes.</p>
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">3. User Registration</h2>
-              <p>To use certain features of the service, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete. You are responsible for safeguarding your password.</p>
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">4. Intellectual Property</h2>
-              <p>All content on this website, including but not limited to study notes, blog texts, graphics, logos, and Flutter application source code/designs, are the intellectual property of the platform creator (Vishal). Users may download and read materials for personal, non-commercial use only. Redistribution or reselling of this content without permission is prohibited.</p>
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">5. Limitation of Liability</h2>
-              <p>The applications (APKs) and study notes provided on this platform are for educational purposes. We do not guarantee that the apps will function flawlessly on all devices. In no event shall Voice Note or its creator be liable for any damages arising out of the use or inability to use the materials or applications provided.</p>
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">6. Termination</h2>
-              <p>We may terminate or suspend your account and bar access to the platform immediately, without prior notice or liability, under our sole discretion, for any reason whatsoever, including without limitation if you breach the Terms.</p>
-            </section>
-          </div>
-        </motion.div>
+          <Shield className="w-3.5 h-3.5" />
+          <span>View Privacy Policy</span>
+        </Link>
       </div>
-    </div>
+
+      {/* Main Glassmorphism Document Card */}
+      <div className="max-w-4xl mx-auto relative z-10">
+        <div className="rounded-3xl border border-white/10 bg-zinc-950/75 backdrop-blur-2xl p-6 sm:p-10 md:p-12 shadow-2xl relative overflow-hidden">
+          {/* Top Shimmer Line */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
+
+          {/* Header */}
+          <div className="border-b border-white/10 pb-8 mb-8">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 mb-4">
+              <Scale className="w-3.5 h-3.5" />
+              <span>User Agreement & Legal Terms</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+              Terms of Service
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-400 mt-2">
+              Last Updated: <span className="text-zinc-200 font-medium">{lastUpdated}</span>
+            </p>
+            <p className="text-sm text-zinc-300 mt-4 leading-relaxed">
+              Welcome to our GATE & UGC NET Computer Science preparation platform. By creating an account, ticking the registration consent box, or accessing our digital notes and PDF resources, you agree to be legally bound by these Terms of Service.
+            </p>
+          </div>
+
+          {/* Terms Content Sections */}
+          <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
+            {/* Section 1: Non-Affiliation Disclaimer */}
+            <section className="p-5 rounded-2xl bg-amber-500/5 border border-amber-500/25 space-y-2">
+              <h2 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                <span>1. Non-Affiliation Disclaimer (GATE & UGC NET)</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-300">
+                This website is an <strong className="text-white">independent educational platform</strong> created to assist Computer Science aspirants. We are <strong className="text-white">NOT</strong> officially affiliated with, endorsed by, or connected to the Indian Institutes of Technology (IITs), IISc, the GATE Committee, the National Testing Agency (NTA), or the University Grants Commission (UGC). All exam names and trademarks belong to their respective official authorities.
+              </p>
+            </section>
+
+            {/* Section 2: Intellectual Property & PDF Vault */}
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+                <Copyright className="w-5 h-5 text-indigo-400 shrink-0" />
+                <span>2. Intellectual Property & Handwritten PDF License</span>
+              </h2>
+              <p className="text-zinc-400">
+                All structured digital notes, handwritten PDF notes, diagrams, code snippets, and UI designs on this platform are protected under the Indian Copyright Act, 1957:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-zinc-300">
+                <li>
+                  <strong className="text-white">Personal Study Only:</strong> You are granted a limited, non-exclusive, non-transferable license to view and download materials strictly for your personal, non-commercial exam preparation.
+                </li>
+                <li>
+                  <strong className="text-white">Strict Anti-Piracy Rule:</strong> You must <strong className="text-white">NOT</strong> resell, re-upload, distribute on Telegram channels, Google Drive links, WhatsApp groups, or publish our handwritten PDFs or digital notes on any third-party website without written permission.
+                </li>
+              </ul>
+            </section>
+
+            {/* Section 3: Educational & AI Accuracy Disclaimer */}
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+                <BookOpen className="w-5 h-5 text-indigo-400 shrink-0" />
+                <span>3. Educational Content & No-Guarantee Disclaimer</span>
+              </h2>
+              <p>
+                While every effort is made to keep our GATE and UGC NET Computer Science notes, formulas, and doubt solutions accurate and updated, all materials (including any automated/AI-assisted responses) are provided on an <strong className="text-white">&quot;AS IS&quot;</strong> basis. We do not guarantee error-free content, specific exam ranks, qualification, or selection in any competitive examination. Students are advised to cross-verify critical syllabus updates and official exam notifications from official exam portals.
+              </p>
+            </section>
+
+            {/* Section 4: User Conduct & Prohibited Activities */}
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+                <Ban className="w-5 h-5 text-indigo-400 shrink-0" />
+                <span>4. Acceptable Use & Account Security</span>
+              </h2>
+              <ul className="list-disc pl-6 space-y-2 text-zinc-300">
+                <li>You are responsible for maintaining the confidentiality of your account login credentials.</li>
+                <li>You agree not to use automated bots, scrapers, or crawlers to extract content or overwhelm our server endpoints.</li>
+                <li>You must not submit abusive, defamatory, spam, or malicious payloads through our Contact/Doubt forms.</li>
+                <li>We reserve the right to suspend or permanently terminate accounts that violate these terms without prior notice.</li>
+              </ul>
+            </section>
+
+            {/* Section 5: Limitation of Liability */}
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+                <ShieldAlert className="w-5 h-5 text-indigo-400 shrink-0" />
+                <span>5. Limitation of Liability</span>
+              </h2>
+              <p>
+                To the maximum extent permitted by applicable Indian law, the platform creators, administrators, and contributors shall not be liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our study materials, server downtime, data loss, or reliance on any information provided on this website.
+              </p>
+            </section>
+
+            {/* Section 6: Governing Law */}
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+                <Gavel className="w-5 h-5 text-indigo-400 shrink-0" />
+                <span>6. Governing Law & Dispute Resolution</span>
+              </h2>
+              <p>
+                These Terms of Service shall be governed by and construed in accordance with the laws of India. Any legal disputes or proceedings arising out of your use of this platform shall be subject to the exclusive jurisdiction of the competent courts in India.
+              </p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }

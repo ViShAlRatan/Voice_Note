@@ -17,11 +17,20 @@ export default function RegisterPage() {
   const [isPending, startTransition] = useTransition();
   const [file, setFile] = useState<File | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!acceptedTerms) {
+      toast.error("Please accept the Terms of Service and Privacy Policy to continue.", {
+        style: { background: "#18181b", color: "white", border: "1px solid #ef4444" }
+      });
+      return;
+    }
+
     const formData = new FormData(event.currentTarget);
     
     const name = formData.get("name") as string;
@@ -217,11 +226,36 @@ export default function RegisterPage() {
                 </button>
               </div>
             </div>
+
+            {/* Mandatory Consent Checkbox */}
+            <div className="flex items-start gap-2.5 pt-2">
+              <input
+                id="terms-consent"
+                name="terms-consent"
+                type="checkbox"
+                required
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                disabled={isPending}
+                className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/50 text-indigo-500 focus:ring-1 focus:ring-indigo-500 accent-indigo-500 cursor-pointer shrink-0"
+              />
+              <label htmlFor="terms-consent" className="text-xs text-zinc-400 leading-relaxed select-none">
+                I agree to the{" "}
+                <Link href="/terms" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">
+                  Privacy Policy
+                </Link>
+                , and consent to the processing of my personal data.
+              </label>
+            </div>
             
             <Button 
               type="submit" 
-              disabled={isPending} 
-              className="w-full h-11 mt-6 bg-white text-black hover:bg-zinc-200 font-medium transition-all duration-300 active:scale-[0.98] shadow-lg rounded-xl"
+              disabled={isPending || !acceptedTerms} 
+              className="w-full h-11 mt-6 bg-white text-black hover:bg-zinc-200 font-medium transition-all duration-300 active:scale-[0.98] shadow-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {isPending ? "Creating account..." : "Create Account"}
